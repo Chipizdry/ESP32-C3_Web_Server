@@ -1,0 +1,8 @@
+fatal: detected dubious ownership in repository at 'G:/Espressif/frameworks/esp-idf-v5.2.2/components/openthread/openthread'
+'G:/Espressif/frameworks/esp-idf-v5.2.2/components/openthread/openthread/.git' is owned by:
+	BUILTIN/└фьшэшёЄЁрЄюЁ√ (S-1-5-32-544)
+but the current user is:
+	CHIPIZDRY/chipi (S-1-5-21-2284377460-2274023057-2870012643-1001)
+To add an exception for this directory, call:
+
+	git config --global --add safe.directory G:/Espressif/frameworks/esp-idf-v5.2.2/components/openthread/openthread

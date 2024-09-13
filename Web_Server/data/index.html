@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <title>FlyWheel Web Server</title>
+    <style>
+        /* Стили для контейнера вкладок */
+        .tabs {
+            display: flex; /* Вкладки располагаются в строку */
+            border-bottom: 1px solid #ccc; /* Нижняя граница под вкладками */
+        }
+
+        /* Стили для каждой вкладки */
+        .tab {
+            flex: 1; /* Вкладки занимают равную ширину */
+            text-align: center; /* Центрируем текст внутри вкладок */
+            cursor: pointer;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-right: 1px solid #ccc; /* Горизонтальная граница между вкладками */
+        }
+
+        /* Убираем правую границу у последней вкладки */
+        .tab:last-child {
+            border-right: none;
+        }
+
+        /* Контент вкладок */
+        .tabcontent {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-top: none; /* Убираем верхнюю границу, чтобы она не пересекалась с вкладками */
+            margin-top: 0;
+        }
+
+        /* Стиль для активной вкладки */
+        .tab.active {
+            background-color: #4CAF50;
+            border-bottom: 1px solid #fff; /* Имитируем активную вкладку */
+        }
+
+        /* Активный контент вкладки */
+        .tabcontent.active {
+            display: block;
+        }
+
+        /* Стиль для контейнера графика */
+        #chartContainer {
+            width: 100%;
+            height: 400px;
+        }
+        
+        
+            /* Стили для модального окна */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .modal input {
+            display: block;
+            margin: 10px auto;
+            padding: 10px;
+            width: 80%;
+        }
+        .modal button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        
+    </style>
+
+    <!-- Подключаем библиотеку Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+    
+     <!-- Модальное окно для логина -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h2>Введите логин и пароль</h2>
+            <input type="text" id="username" placeholder="Логин">
+            <input type="password" id="password" placeholder="Пароль">
+            <button onclick="login()">Войти</button>
+        </div>
+    </div>
+    
+        <h1>FlyWheel Control Panel</h1>
+
+        <!-- Вкладки -->
+        <div class="tabs">
+            <div class="tab active" onclick="openTab(event, 'control')">Управление</div>
+            <div class="tab" onclick="openTab(event, 'monitor')">Мониторинг</div>
+            <div class="tab" onclick="openTab(event, 'settings')">Настройки</div>
+        </div>
+
+		        <!-- Контент вкладки Управление -->
+		<div id="control" class="tabcontent active">
+		    <p>Здесь можно управлять параметрами FlyWheel.</p>
+		    <p>Напряжение питания, В: <span id="voltage">0</span></p>
+		    <p>Скорость, Об.мин.: <span id="speed">0</span></p>
+		    
+		    <!-- Ползунок для установки максимального тока -->
+			<label for="maxCurrentRange">Максимальный ток, А: <span id="maxCurrentValue">1</span></label>
+			<input type="range" id="maxCurrentRange" min="0" max="50" step="0.1" value="1" oninput="updateMaxCurrent(this.value)" style="width: 300px;">
+
+		</div>
+
+        <!-- Контент вкладки Мониторинг -->
+        <div id="monitor" class="tabcontent">
+            <p>Здесь отображаются данные мониторинга.</p>
+            <p>Температура: <span id="temperature">0</span>°C</p>
+            <p>Ток: <span id="current">0</span> A</p>
+
+            <!-- Контейнер для графика -->
+            <div id="chartContainer">
+                <canvas id="speedChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Контент вкладки Настройки -->
+        <div id="settings" class="tabcontent">
+ 
+			    <p>Current IP: <span id="ip_address">Loading...</span></p>
+			    <p>Netmask: <span id="netmask">Loading...</span></p>
+			    <p>Gateway: <span id="gateway">Loading...</span></p>
+			
+			    <form action="/save_settings" method="POST">
+			        <label for="wifi_ssid">Wi-Fi SSID:</label>
+			        <input type="text" id="wifi_ssid" name="wifi_ssid">
+			        
+			        <label for="wifi_password">Wi-Fi Password:</label>
+			        <input type="password" id="wifi_password" name="wifi_password">
+			        
+			        <label for="wifi_mode">Wi-Fi Mode:</label>
+			        <select id="wifi_mode" name="wifi_mode">
+			            <option value="station">Station</option>
+			            <option value="ap">Access Point</option>
+			        </select>
+			
+			        <input type="submit" value="Save">
+			    </form>
+
+        </div>
+    </div>
+
+    <script>
+    /*
+    
+      // Логин и пароль для проверки
+        const USERNAME = "admin";
+        const PASSWORD = "12345";
+
+        // Открытие модального окна при загрузке страницы
+        window.onload = function() {
+            if (!localStorage.getItem("authenticated")) {
+                document.getElementById("loginModal").style.display = "flex";
+                document.getElementById("content").style.display = "none"; // Скрыть содержимое до аутентификации
+            }
+        }
+
+        // Функция для входа
+        function login() {
+            var username = document.getElementById("username").value;
+            var password = document.getElementById("password").value;
+            if (username === USERNAME && password === PASSWORD) {
+                localStorage.setItem("authenticated", true); // Сохраняем статус входа
+                document.getElementById("loginModal").style.display = "none"; // Скрываем модальное окно
+                document.getElementById("content").style.display = "block"; // Показываем содержимое
+            } else {
+                alert("Неверный логин или пароль");
+            }
+        }
+    */
+    
+    
+        // Функция для переключения вкладок
+        function openTab(event, tabName) {
+            var i, tabcontent, tabs;
+            
+            // Скрываем все вкладки
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            
+            // Убираем активный класс с вкладок
+            tabs = document.getElementsByClassName("tab");
+            for (i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove("active");
+            }
+            
+            // Показываем текущую вкладку
+            document.getElementById(tabName).classList.add("active");
+            event.currentTarget.classList.add("active");
+        }
+
+			
+
+     // Инициализация данных для графика
+var timeData = [];
+var speedData = [];
+var timeCounter = 0; // Счетчик времени в секундах
+
+var speedChart = new Chart(document.getElementById('speedChart'), {
+    type: 'line',
+    data: {
+        labels: timeData,
+        datasets: [{
+            label: 'Скорость (об/мин)',
+            data: speedData,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            fill: true
+        }]
+    },
+    options: {
+        scales: {
+            x: {
+                type: 'linear',
+                position: 'bottom',
+                title: {
+                    display: true,
+                    text: 'Время (сек)'
+                }
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: 'Скорость (об/мин)'
+                }
+            }
+        }
+    }
+});
+
+		
+		    // Функция для обновления значения максимального тока
+		    function updateMaxCurrent(value) {
+		        document.getElementById('maxCurrentValue').innerText = value;
+		        
+		        // Можно отправить это значение на сервер или использовать его для управления другими элементами
+		        console.log('Установленный максимальный ток: ' + value + ' A');
+		    }
+		
+
+// Функция для получения текущего времени в формате HH:MM:SS
+function getCurrentTimeFormatted() {
+    var now = new Date(); // Получаем текущее время
+
+    var hours = now.getHours();   // Часы
+    var minutes = now.getMinutes(); // Минуты
+    var seconds = now.getSeconds(); // Секунды
+
+    // Форматируем часы, минуты и секунды так, чтобы всегда было 2 цифры
+    hours = hours < 10 ? '0' + hours : hours;
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    seconds = seconds < 10 ? '0' + seconds : seconds;
+
+    // Возвращаем строку в формате HH:MM:SS
+    return hours + ':' + minutes + ':' + seconds;
+}
+
+       // Функция для обновления данных графика
+function updateChart(newSpeed) {
+    timeCounter++; // Увеличиваем счетчик времени в секундах
+    var currentTime = getCurrentTimeFormatted();
+    
+    console.log("Текущее время:", currentTime); // Лог человекочитаемого времени для проверки
+
+    // Добавляем числовое значение времени в секундах для графика
+    timeData.push(timeCounter);
+    speedData.push(newSpeed);
+
+    if (timeData.length > 90) {
+        timeData.shift();  // Удаляем старые данные
+        speedData.shift();
+    }
+
+    speedChart.update();  // Обновляем график
+}
+
+
+    // Функция для обновления данных
+function updateData() {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/data", true);
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState == 4 && xhr.status == 200) {
+            var data = JSON.parse(xhr.responseText);
+            document.getElementById("voltage").innerText = data.voltage;
+            document.getElementById("speed").innerText = data.speed;
+            document.getElementById("temperature").innerText = data.temperature;
+            document.getElementById("current").innerText = data.current;
+
+            // Обновляем данные графика
+            updateChart(data.speed);
+        }
+    };
+    xhr.send();
+}
+
+        // Обновление данных каждые 1 секунду
+        setInterval(updateData, 1000);
+        
+        
+        
+          function updateNetworkInfo() {
+      fetch('/get_ip')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('ip_address').textContent = data.ip;
+            document.getElementById('netmask').textContent = data.netmask;
+            document.getElementById('gateway').textContent = data.gateway;
+        })
+        .catch(error => console.error('Error fetching network info:', error));
+    }
+
+    // Обновление сетевых параметров каждую секунду
+    setInterval(updateNetworkInfo, 1000);
+
+    // Получение сетевых параметров сразу при загрузке страницы
+    updateNetworkInfo();
+    
+   
+    
+    
+    
+    
+    </script>
+</body>
+</html>
