@@ -114,7 +114,6 @@
 
 		        <!-- Контент вкладки Управление -->
 		<div id="control" class="tabcontent active">
-		    <p>Здесь можно управлять параметрами FlyWheel.</p>
 		    <p>Напряжение питания, В: <span id="voltage">0</span></p>
 		    <p>Скорость, Об.мин.: <span id="speed">0</span></p>
 		    
@@ -126,7 +125,7 @@
 
         <!-- Контент вкладки Мониторинг -->
         <div id="monitor" class="tabcontent">
-            <p>Здесь отображаются данные мониторинга.</p>
+           
             <p>Температура: <span id="temperature">0</span>°C</p>
             <p>Ток: <span id="current">0</span> A</p>
 
@@ -143,7 +142,7 @@
 			    <p>Netmask: <span id="netmask">Loading...</span></p>
 			    <p>Gateway: <span id="gateway">Loading...</span></p>
 			
-			    <form action="/save_settings" method="POST">
+			    <form action="/wifi_mode" method="POST">
 			        <label for="wifi_ssid">Wi-Fi SSID:</label>
 			        <input type="text" id="wifi_ssid" name="wifi_ssid">
 			        
@@ -157,6 +156,10 @@
 			        </select>
 			
 			        <input type="submit" value="Save">
+			        
+			        <button onclick="switchToAP()">Switch to AP</button>
+                    <button onclick="switchToSTA()">Switch to STA</button>
+			        
 			    </form>
 
         </div>
@@ -233,6 +236,10 @@ var speedChart = new Chart(document.getElementById('speedChart'), {
         }]
     },
     options: {
+        animation: {
+            duration: 300, // Уменьшаем время анимации для более плавного обновления
+            easing: 'easeOutQuad' // Используем более плавный эффект
+        },
         scales: {
             x: {
                 type: 'linear',
@@ -251,6 +258,7 @@ var speedChart = new Chart(document.getElementById('speedChart'), {
         }
     }
 });
+
 
 		
 		    // Функция для обновления значения максимального тока
@@ -281,22 +289,23 @@ function getCurrentTimeFormatted() {
 
        // Функция для обновления данных графика
 function updateChart(newSpeed) {
-    timeCounter++; // Увеличиваем счетчик времени в секундах
+    timeCounter++; // Увеличиваем счетчик времени
     var currentTime = getCurrentTimeFormatted();
     
-    console.log("Текущее время:", currentTime); // Лог человекочитаемого времени для проверки
-
-    // Добавляем числовое значение времени в секундах для графика
+    // Добавляем новые данные
     timeData.push(timeCounter);
     speedData.push(newSpeed);
 
+    // Если массивы превышают длину 90, удаляем только первое значение
     if (timeData.length > 90) {
-        timeData.shift();  // Удаляем старые данные
+        timeData.shift();  
         speedData.shift();
     }
 
-    speedChart.update();  // Обновляем график
+    // Обновляем график с плавной анимацией
+    speedChart.update();  
 }
+
 
 
     // Функция для обновления данных
@@ -319,7 +328,7 @@ function updateData() {
 }
 
         // Обновление данных каждые 1 секунду
-        setInterval(updateData, 1000);
+      setInterval(updateData, 500); 
         
         
         
@@ -333,6 +342,31 @@ function updateData() {
         })
         .catch(error => console.error('Error fetching network info:', error));
     }
+
+
+
+    function switchToAP() {
+    fetch('/wifi_mode', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ mode: 'ap' }),
+    }).then(response => response.text())
+      .then(data => alert(data));
+}
+
+    function switchToSTA() {
+         fetch('/wifi_mode', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ mode: 'sta' }),
+    }).then(response => response.text())
+      .then(data => alert(data));
+}
+
 
     // Обновление сетевых параметров каждую секунду
     setInterval(updateNetworkInfo, 1000);
