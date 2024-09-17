@@ -657,25 +657,7 @@ void app_main(void) {
         event_loop_created = true;
     }
     
-    // Чтение сохранённого режима Wi-Fi из NVS
-    nvs_handle_t nvs_handle;
-    wifi_mode_t saved_wifi_mode = WIFI_MODE_STA; // По умолчанию - STA
-
-    esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_handle);
-    if (err == ESP_OK) {
-        uint8_t mode;
-        err = nvs_get_u8(nvs_handle, "wifi_mode", &mode);
-        if (err == ESP_OK) {
-            saved_wifi_mode = (wifi_mode_t)mode;
-            ESP_LOGI(TAG, "Restored Wi-Fi mode from NVS: %s", (saved_wifi_mode == WIFI_MODE_STA) ? "STA" : "AP");
-        } else {
-            ESP_LOGE(TAG, "Failed to get Wi-Fi mode from NVS");
-        }
-        nvs_close(nvs_handle);
-    } else {
-        ESP_LOGE(TAG, "Failed to open NVS for reading");
-    }
-
+    
     // Инициализация Wi-Fi
     if (!wifi_initialized) {
         esp_netif_create_default_wifi_sta();
@@ -701,7 +683,9 @@ void app_main(void) {
         ESP_ERROR_CHECK(esp_wifi_start());
         wifi_initialized = true;
     }
-
+ // Чтение сохранённого режима Wi-Fi из NVS
+    init_wifi_from_nvs();
+    
     
     // Монтирование файловой системы LittleFS
     if (!filesystem_mounted) {
