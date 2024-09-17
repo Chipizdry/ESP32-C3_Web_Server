@@ -1,5 +1,0 @@
-[1/4] cmd.exe /C "cd /D C:\Work\Espressif_work\Web_Server\build\esp-idf\esptool_py && G:\Espressif\python_env\idf5.2_py3.11_env\Scripts\python.exe G:/Espressif/frameworks/esp-idf-v5.2.2/components/partition_table/check_sizes.py --offset 0x8000 partition --type app C:/Work/Espressif_work/Web_Server/build/partition_table/partition-table.bin C:/Work/Espressif_work/Web_Server/build/app-template.bin"
-app-template.bin binary size 0xde1b0 bytes. Smallest app partition is 0x100000 bytes. 0x21e50 bytes (13%) free.
-[2/4] Performing build step for 'bootloader'
-[1/1] cmd.exe /C "cd /D C:\Work\Espressif_work\Web_Server\build\bootloader\esp-idf\esptool_py && G:\Espressif\python_env\idf5.2_py3.11_env\Scripts\python.exe G:/Espressif/frameworks/esp-idf-v5.2.2/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 C:/Work/Espressif_work/Web_Server/build/bootloader/bootloader.bin"
-Bootloader binary size 0x5170 bytes. 0x2e90 bytes (36%) free.

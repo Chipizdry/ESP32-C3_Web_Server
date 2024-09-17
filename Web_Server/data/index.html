@@ -56,6 +56,7 @@
         
         
             /* Стили для модального окна */
+        /* Стили для модального окна */
         .modal {
             display: none;
             position: fixed;
@@ -85,6 +86,7 @@
             cursor: pointer;
         }
         
+        
     </style>
 
     <!-- Подключаем библиотеку Chart.js -->
@@ -102,6 +104,17 @@
             <button onclick="login()">Войти</button>
         </div>
     </div>
+    
+      <!-- Модальное окно для переключения режима Wi-Fi -->
+        <div id="modeConfirmationModal" class="modal">
+            <div class="modal-content">
+                <h2>Подтверждение переключения режима</h2>
+                <p>Переключение режима Wi-Fi приведёт к перезагрузке устройства и смене режима.</p><br>
+                 <p> Вы уверены, что хотите продолжить?</p>
+                <button onclick="confirmModeSwitch()">Да</button>
+                <button onclick="cancelModeSwitch()">Нет</button>
+            </div>
+        </div>
     
         <h1>FlyWheel Control Panel</h1>
 
@@ -135,33 +148,27 @@
             </div>
         </div>
 
-        <!-- Контент вкладки Настройки -->
+       <!-- Контент вкладки Настройки -->
         <div id="settings" class="tabcontent">
- 
-			    <p>Current IP: <span id="ip_address">Loading...</span></p>
-			    <p>Netmask: <span id="netmask">Loading...</span></p>
-			    <p>Gateway: <span id="gateway">Loading...</span></p>
-			
-			    <form action="/wifi_mode" method="POST">
-			        <label for="wifi_ssid">Wi-Fi SSID:</label>
-			        <input type="text" id="wifi_ssid" name="wifi_ssid">
-			        
-			        <label for="wifi_password">Wi-Fi Password:</label>
-			        <input type="password" id="wifi_password" name="wifi_password">
-			        
-			        <label for="wifi_mode">Wi-Fi Mode:</label>
-			        <select id="wifi_mode" name="wifi_mode">
-			            <option value="station">Station</option>
-			            <option value="ap">Access Point</option>
-			        </select>
-			
-			        <input type="submit" value="Save">
-			        
-			        <button onclick="switchToAP()">Switch to AP</button>
-                    <button onclick="switchToSTA()">Switch to STA</button>
-			        
-			    </form>
-
+            <p>Current IP: <span id="ip_address">Loading...</span></p>
+            <p>Netmask: <span id="netmask">Loading...</span></p>
+            <p>Gateway: <span id="gateway">Loading...</span></p>
+            <p>Current Mode: <span id="network_mode">Loading...</span></p>
+            
+            <form id="wifiForm">
+                <label for="wifi_ssid">Wi-Fi SSID:</label>
+                <input type="text" id="wifi_ssid" name="wifi_ssid">
+                
+                <label for="wifi_password">Wi-Fi Password:</label>
+                <input type="password" id="wifi_password" name="wifi_password">
+                
+                <!-- Кнопки для переключения режимов -->
+                <button type="button" id="switchToAPButton" onclick="openModeConfirmation('AP')">Switch to AP</button>
+                <button type="button" id="switchToSTAButton" onclick="openModeConfirmation('STA')">Switch to STA</button>
+                
+                <!-- Кнопка сохранения настроек -->
+                <button type="button" onclick="saveSettings()">Save</button>
+            </form>
         </div>
     </div>
 
@@ -339,32 +346,86 @@ function updateData() {
             document.getElementById('ip_address').textContent = data.ip;
             document.getElementById('netmask').textContent = data.netmask;
             document.getElementById('gateway').textContent = data.gateway;
+            document.getElementById('network_mode').textContent = data.mode;
+             
+             
+             // Обновление состояния кнопок
+            if (data.mode === 'AP') {
+                document.getElementById('switchToAPButton').disabled = true;
+                document.getElementById('switchToSTAButton').disabled = false;
+            } else if (data.mode === 'STA') {
+                document.getElementById('switchToAPButton').disabled = false;
+                document.getElementById('switchToSTAButton').disabled = true;
+            }
         })
         .catch(error => console.error('Error fetching network info:', error));
     }
 
 
 
-    function switchToAP() {
-    fetch('/wifi_mode', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ mode: 'ap' }),
-    }).then(response => response.text())
-      .then(data => alert(data));
-}
+     
+        // Функция для открытия модального окна подтверждения переключения режима
+        function openModeConfirmation(mode) {
+            var modal = document.getElementById('modeConfirmationModal');
+            modal.style.display = 'flex';
+            modal.dataset.mode = mode; // Сохраняем режим переключения
+        }
 
-    function switchToSTA() {
-         fetch('/wifi_mode', {
+        // Функция для подтверждения переключения режима
+        function confirmModeSwitch() {
+            var modal = document.getElementById('modeConfirmationModal');
+            var mode = modal.dataset.mode;
+
+            // Отправляем запрос на сервер для переключения режима
+            fetch('/wifi_mode', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ mode: mode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Режим успешно переключен на ' + (mode === 'AP' ? 'Access Point' : 'Station'));
+                } else {
+                    alert('Ошибка при переключении режима.');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+            });
+
+            modal.style.display = 'none';
+        }
+
+        // Функция для отмены переключения режима
+        function cancelModeSwitch() {
+            var modal = document.getElementById('modeConfirmationModal');
+            modal.style.display = 'none';
+        }
+
+
+function saveSettings() {
+    const settings = {
+        max_current: document.getElementById('maxCurrentRange').value,
+        voltage_limit: document.getElementById('voltageLimit').value,
+        speed_limit: document.getElementById('speedLimit').value
+    };
+    
+    fetch('/save_settings', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ mode: 'sta' }),
-    }).then(response => response.text())
-      .then(data => alert(data));
+        body: JSON.stringify(settings),
+    }).then(response => {
+        if (response.ok) {
+            console.log('Настройки сохранены успешно');
+        } else {
+            console.error('Ошибка сохранения настроек');
+        }
+    });
 }
 
 

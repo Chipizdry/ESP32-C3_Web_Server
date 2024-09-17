@@ -21,7 +21,6 @@
 
 
 // Статический IP и параметры Wi-Fi AP
-//#define AP_SSID "ESP32AP"
 #define AP_SSID_PREFIX "FlyWheel-"  // Префикс для SSID
 #define AP_PASS "12345678"
 #define AP_CHANNEL 1
@@ -29,7 +28,25 @@
 #define AP_IP "192.168.1.1"
 #define AP_GW "192.168.1.1"
 #define AP_NETMASK "255.255.255.0"
+#define STORAGE_NAMESPACE "storage"
 
+// Структура для хранения всех настроек
+typedef struct {
+    float max_current;  // Максимальный ток
+    int voltage_limit;  // Пороговое напряжение
+    int speed_limit;    // Ограничение скорости
+    char wifi_ssid[32]; // SSID Wi-Fi
+    char wifi_password[64]; // Пароль Wi-Fi
+} device_settings_t;
+
+// Значения по умолчанию для настроек
+device_settings_t default_settings = {
+    .max_current = 1.0,
+    .voltage_limit = 12,
+    .speed_limit = 1500,
+    .wifi_ssid = "Medical",
+    .wifi_password = "0445026833"
+};
 
 
 void init_nvs() {
@@ -42,6 +59,56 @@ void init_nvs() {
 }
 
 
+esp_err_t save_settings_to_nvs(device_settings_t *settings) {
+    nvs_handle_t nvs_handle;
+    esp_err_t err;
+
+    // Открываем хранилище NVS для записи
+    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE("NVS", "Error opening NVS: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    // Сохраняем настройки
+    err = nvs_set_blob(nvs_handle, "device_settings", settings, sizeof(*settings));
+    if (err == ESP_OK) {
+        err = nvs_commit(nvs_handle);  // Подтверждаем изменения
+    }
+    nvs_close(nvs_handle);  // Закрываем NVS
+
+    return err;
+}
+
+
+esp_err_t load_settings_from_nvs(device_settings_t *settings) {
+    nvs_handle_t nvs_handle;
+    esp_err_t err;
+
+    // Открываем NVS для чтения
+    err = nvs_open(STORAGE_NAMESPACE, NVS_READONLY, &nvs_handle);
+    if (err == ESP_ERR_NVS_NOT_FOUND) {
+        // Если не найдены данные, используем настройки по умолчанию
+        memcpy(settings, &default_settings, sizeof(device_settings_t));
+        return ESP_ERR_NVS_NOT_FOUND;
+    } else if (err != ESP_OK) {
+        return err;
+    }
+
+    // Получаем данные из NVS
+    size_t required_size;
+    err = nvs_get_blob(nvs_handle, "device_settings", NULL, &required_size);
+    if (err == ESP_OK && required_size == sizeof(device_settings_t)) {
+        err = nvs_get_blob(nvs_handle, "device_settings", settings, &required_size);
+    } else {
+        // Если данных нет, используем настройки по умолчанию
+        memcpy(settings, &default_settings, sizeof(device_settings_t));
+        err = ESP_ERR_NVS_NOT_FOUND;
+    }
+
+    nvs_close(nvs_handle);  // Закрываем NVS
+    return err;
+}
 
 
 void list_files(const char *base_path);
@@ -108,56 +175,6 @@ void init_wifi_ap() {
     ESP_LOGI(TAG, "AP IP Address: %s", AP_IP);
 }
 
-void load_settings(int* setting1, int* setting2) {
-    nvs_handle_t nvs_handle;
-    esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_handle);
-    if (err != ESP_OK) {
-        ESP_LOGI(TAG, "Error opening NVS handle");
-        return;
-    }
-
-    // Чтение значений
-    err = nvs_get_i32(nvs_handle, "setting1", setting1);
-    if (err == ESP_ERR_NVS_NOT_FOUND) {
-        ESP_LOGI(TAG, "Setting1 not found");
-        *setting1 = 0;  // Значение по умолчанию
-    }
-    
-    err = nvs_get_i32(nvs_handle, "setting2", setting2);
-    if (err == ESP_ERR_NVS_NOT_FOUND) {
-        ESP_LOGI(TAG, "Setting2 not found");
-        *setting2 = 0;  // Значение по умолчанию
-    }
-
-    nvs_close(nvs_handle);
-}
-
-
-void save_settings(int setting1, int setting2) {
-    nvs_handle_t nvs_handle;
-    esp_err_t err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
-    if (err != ESP_OK) {
-        ESP_LOGI(TAG, "Error opening NVS handle");
-        return;
-    }
-
-    // Запись значений
-    err = nvs_set_i32(nvs_handle, "setting1", setting1);
-    ESP_ERROR_CHECK(err);
-
-    err = nvs_set_i32(nvs_handle, "setting2", setting2);
-    ESP_ERROR_CHECK(err);
-
-    // Сохранение изменений
-    err = nvs_commit(nvs_handle);
-    ESP_ERROR_CHECK(err);
-
-    nvs_close(nvs_handle);
-}
-
-
-
-
 
 
 // Пример функции для печати IP-адреса
@@ -185,7 +202,6 @@ void print_ip_info() {
     ESP_LOGI(TAG, "Netmask: " IPSTR, IP2STR(&ip_info.netmask));
     ESP_LOGI(TAG, "Gateway: " IPSTR, IP2STR(&ip_info.gw));
 }
-
 
 void initialize_netifs() {
     netif_sta = esp_netif_create_default_wifi_sta();  // Интерфейс для режима Station
@@ -220,6 +236,10 @@ const char* get_mime_type(const char* path) {
     return "text/plain";
 }
 
+
+
+httpd_handle_t start_webserver(void);
+
 // Обработчик событий Wi-Fi
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     if (event_base == WIFI_EVENT) {
@@ -246,8 +266,12 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
                 break;
         }
     }
-}
 
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_START) {
+        ESP_LOGI(TAG, "Wi-Fi AP started, starting web server...");
+        start_webserver();  // Запуск веб-сервера после инициализации AP
+    }
+}
 
 esp_err_t get_ip_handler(httpd_req_t *req) {
     char response[128];
@@ -290,10 +314,15 @@ esp_err_t get_ip_handler(httpd_req_t *req) {
         return err;
     }
 
-    // Формируем JSON-ответ с IP, маской и шлюзом
+    // Определяем режим работы
+    const char *mode_str = (mode == WIFI_MODE_STA) ? "STA" : "AP";
+
+   
+               // Формируем JSON-ответ с IP, маской, шлюзом и режимом работы
     snprintf(response, sizeof(response),
-             "{\"ip\": \"" IPSTR "\", \"netmask\": \"" IPSTR "\", \"gateway\": \"" IPSTR "\"}",
-             IP2STR(&ip_info.ip), IP2STR(&ip_info.netmask), IP2STR(&ip_info.gw));
+             "{\"ip\": \"" IPSTR "\", \"netmask\": \"" IPSTR "\", \"gateway\": \"" IPSTR "\", \"mode\": \"%s\"}",
+             IP2STR(&ip_info.ip), IP2STR(&ip_info.netmask), IP2STR(&ip_info.gw), mode_str);
+
 
     httpd_resp_set_type(req, "application/json");
     esp_err_t res = httpd_resp_send(req, response, strlen(response));
@@ -328,10 +357,10 @@ esp_err_t wifi_mode_handler(httpd_req_t *req) {
 
     // Определяем, какой режим был запрошен (например, "sta" или "ap")
     
-    if (strstr(buf, "sta") != NULL) {
+    if (strstr(buf, "STA") != NULL) {
         esp_wifi_set_mode(WIFI_MODE_STA);
         ESP_LOGI(TAG, "Switching to STA mode");
-    } else if (strstr(buf, "ap") != NULL) {
+    } else if (strstr(buf, "AP") != NULL) {
         init_wifi_ap();  // Вызов функции настройки AP
         ESP_LOGI(TAG, "Switching to AP mode");
     }
@@ -340,7 +369,7 @@ esp_err_t wifi_mode_handler(httpd_req_t *req) {
     nvs_handle_t nvs_handle;
     esp_err_t err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
     if (err == ESP_OK) {
-        if (strstr(buf, "sta") != NULL) {
+        if (strstr(buf, "STA") != NULL) {
             nvs_set_u8(nvs_handle, "wifi_mode", WIFI_MODE_STA);
         } else {
             nvs_set_u8(nvs_handle, "wifi_mode", WIFI_MODE_AP);
@@ -408,33 +437,24 @@ esp_err_t post_handler(httpd_req_t *req) {
     buf[ret] = '\0';
     ESP_LOGI(TAG, "Received POST data: %s", buf);
     
-    // Разбор полученных данных (например, JSON)
-    int setting1, setting2;
-    sscanf(buf, "{\"setting1\":%d, \"setting2\":%d}", &setting1, &setting2);
-
-    // Сохранение настроек в NVS
-    save_settings(setting1, setting2);
-    
-    
-    
+ 
     httpd_resp_send(req, "POST data received", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
 esp_err_t data_get_handler(httpd_req_t *req) {
     // Пример данных
-  //  float voltage = 12.5;  // Здесь будет ваше реальное значение напряжения
-  //  int speed = 1500;      // Здесь будет реальная скорость
-  // Генерация случайного напряжения от 10.0 до 14.0 В
-  // float voltage = ((float)(rand() % 100)) / 10.0;  // Генерация напряжения от 0 до 10 В
-   float voltage = 10.0 + ((float)(rand() % 101)) / 10.0;  // Генерация напряжения от 10 до 20 В
-
-   // int speed = rand() % 5000;  // Генерация скорости от 0 до 5000 об/мин
-   int speed = 1500 + (rand() % 1001);  // Генерация скорости от 1500 до 4500 об/мин
-
-    // Формирование JSON-ответа
-    char response[100];
-    snprintf(response, sizeof(response), "{\"voltage\": %.2f, \"speed\": %d}", voltage, speed);
+   // Генерация примеров данных
+    float voltage = 10.0 + ((float)(rand() % 101)) / 10.0;  // Генерация напряжения от 10 до 20 В
+    int speed = 1500 + (rand() % 1001);  // Генерация скорости от 1500 до 2500 об/мин
+    float temperature = 20.0 + ((float)(rand() % 301)) / 10.0;  // Генерация температуры от 20 до 50 °C
+    float current = 0.5 + ((float)(rand() % 100)) / 100.0;  // Генерация тока от 0.5 до 1.5 А
+    
+    
+     // Формирование JSON-ответа
+    char response[200];
+    snprintf(response, sizeof(response),
+             "{\"voltage\": %.2f, \"speed\": %d, \"temperature\": %.1f, \"current\": %.2f}",voltage, speed, temperature, current);
 
     // Отправка ответа клиенту
     httpd_resp_set_type(req, "application/json");
@@ -502,21 +522,21 @@ httpd_handle_t start_webserver(void) {
 				};
 				httpd_register_uri_handler(server, &root_get_uri);
 
-             httpd_uri_t settings_get_uri = {
+                httpd_uri_t settings_get_uri = {
 			    .uri = "/settings.html",  // Обработка конкретного запроса
 			    .method = HTTP_GET,
 			    .handler = file_get_handler,
 			    .user_ctx = NULL
-			};
-			httpd_register_uri_handler(server, &settings_get_uri);
+		     	};
+		    	httpd_register_uri_handler(server, &settings_get_uri);
 
-		httpd_uri_t style_get_uri = {
-		    .uri = "/style.css",  // Обработка стилей
-		    .method = HTTP_GET,
-		    .handler = file_get_handler,
-		    .user_ctx = NULL
-           };
-   httpd_register_uri_handler(server, &style_get_uri);
+		        httpd_uri_t style_get_uri = {
+			    .uri = "/style.css",  // Обработка стилей
+			    .method = HTTP_GET,
+			    .handler = file_get_handler,
+			    .user_ctx = NULL
+	            };
+	            httpd_register_uri_handler(server, &style_get_uri);
    
 		   // Регистрация URI-обработчика
 		   httpd_uri_t data_uri = {
@@ -614,16 +634,11 @@ void app_main(void) {
     }
 
 
-
+ // Загружаем настройки
+    device_settings_t current_settings;
+    load_settings_from_nvs(&current_settings);
 //  init_nvs();
     
-    int setting1, setting2;
-    load_settings(&setting1, &setting2);
-
-    ESP_LOGI(TAG, "Loaded settings: setting1 = %d, setting2 = %d", setting1, setting2);
-
-
-
     // Инициализация TCP/IP стека
     if (!netif_initialized) {
         ESP_ERROR_CHECK(esp_netif_init());
@@ -641,6 +656,26 @@ void app_main(void) {
         ESP_ERROR_CHECK(esp_event_loop_create_default());
         event_loop_created = true;
     }
+    
+    // Чтение сохранённого режима Wi-Fi из NVS
+    nvs_handle_t nvs_handle;
+    wifi_mode_t saved_wifi_mode = WIFI_MODE_STA; // По умолчанию - STA
+
+    esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_handle);
+    if (err == ESP_OK) {
+        uint8_t mode;
+        err = nvs_get_u8(nvs_handle, "wifi_mode", &mode);
+        if (err == ESP_OK) {
+            saved_wifi_mode = (wifi_mode_t)mode;
+            ESP_LOGI(TAG, "Restored Wi-Fi mode from NVS: %s", (saved_wifi_mode == WIFI_MODE_STA) ? "STA" : "AP");
+        } else {
+            ESP_LOGE(TAG, "Failed to get Wi-Fi mode from NVS");
+        }
+        nvs_close(nvs_handle);
+    } else {
+        ESP_LOGE(TAG, "Failed to open NVS for reading");
+    }
+
     // Инициализация Wi-Fi
     if (!wifi_initialized) {
         esp_netif_create_default_wifi_sta();
@@ -676,6 +711,8 @@ void app_main(void) {
 
     // Вывод списка файлов
     list_files("/littlefs");
+      // Сохраняем настройки
+    save_settings_to_nvs(&current_settings);
 
     // Запуск веб-сервера
     start_webserver();
