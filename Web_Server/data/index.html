@@ -225,23 +225,23 @@
 
 			
 
-     // Инициализация данных для графика
-var timeData = [];
-var speedData = [];
-var timeCounter = 0; // Счетчик времени в секундах
-
-var speedChart = new Chart(document.getElementById('speedChart'), {
-    type: 'line',
-    data: {
-        labels: timeData,
-        datasets: [{
-            label: 'Скорость (об/мин)',
-            data: speedData,
-            borderColor: 'rgba(75, 192, 192, 1)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            fill: true
-        }]
-    },
+			     // Инициализация данных для графика
+			var timeData = [];
+			var speedData = [];
+			var timeCounter = 0; // Счетчик времени в секундах
+			
+			var speedChart = new Chart(document.getElementById('speedChart'), {
+			    type: 'line',
+			    data: {
+			        labels: timeData,
+			        datasets: [{
+			            label: 'Скорость (об/мин)',
+			            data: speedData,
+			            borderColor: 'rgba(75, 192, 192, 1)',
+			            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+			            fill: true
+			        }]
+			    },
     options: {
         animation: {
             duration: 300, // Уменьшаем время анимации для более плавного обновления
