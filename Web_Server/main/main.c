@@ -36,7 +36,6 @@ httpd_handle_t server_handle = NULL;
 static bool nvs_initialized = false;
 static bool netif_initialized = false;
 static bool event_loop_created = false;
-static bool wifi_initialized = false;
 static bool filesystem_mounted = false;
 
 
@@ -209,114 +208,91 @@ void stop_webserver() {
     }
 }
 
-void init_wifi_ap() {
-    static bool ap_started = false;
-    if (ap_started) {
-        ESP_LOGI(TAG, "AP already started. Skipping re-initialization.");
-        return;
+
+// Функция для остановки Wi-Fi, если он был запущен
+void check_and_stop_wifi() {
+    wifi_mode_t mode;
+    esp_err_t err = esp_wifi_get_mode(&mode);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "Wi-Fi mode: %d", mode);
+        if (mode != WIFI_MODE_NULL) {
+            ESP_LOGI(TAG, "Stopping Wi-Fi...");
+            esp_wifi_stop();  // Останавливаем Wi-Fi
+            esp_wifi_deinit();  // Освобождаем ресурсы Wi-Fi
+            ESP_LOGI(TAG, "Wi-Fi stopped.");
+        } else {
+            ESP_LOGI(TAG, "Wi-Fi is not running.");
+        }
+    } else {
+        ESP_LOGE(TAG, "Failed to get Wi-Fi mode: %s", esp_err_to_name(err));
     }
-
-    ap_started = true;
-
-    // Остановка предыдущего Wi-Fi AP, если он уже запущен
-    ESP_ERROR_CHECK(esp_wifi_stop());
-    ESP_LOGI(TAG, "Stopping any existing AP mode...");
-     httpd_stop(server_handle);
-    // Получаем MAC-адрес устройства
-    uint8_t mac[6];
-    esp_read_mac(mac, ESP_MAC_WIFI_STA);
-
-    // Преобразуем последние 3 байта MAC-адреса в шестнадцатеричную строку
-    char unique_id[7];
-    snprintf(unique_id, sizeof(unique_id), "%02X%02X%02X", mac[3], mac[4], mac[5]);
-
-    // Формируем полный SSID с уникальной частью
-    char ssid[32];
-    snprintf(ssid, sizeof(ssid), "%s%s", AP_SSID_PREFIX, unique_id);
-
-    // Настройка Wi-Fi AP
-    wifi_config_t wifi_config = {
-        .ap = {
-            .ssid = {0},
-            .ssid_len = strlen(ssid),
-            .password = AP_PASS,
-            .channel = AP_CHANNEL,
-            .max_connection = AP_MAX_CONN,
-            .authmode = WIFI_AUTH_WPA_WPA2_PSK,
-        },
-    };
-    strcpy((char *)wifi_config.ap.ssid, ssid);
-
-    if (strlen(AP_PASS) == 0) {
-        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
-    }
-
-    // Инициализация netif с пользовательскими параметрами
-    ESP_LOGI(TAG, "Initializing network interface...");
-    ESP_ERROR_CHECK(esp_netif_init());
-
-    // Создание netif с кастомными параметрами
-    esp_netif_inherent_config_t netif_cfg = ESP_NETIF_INHERENT_DEFAULT_WIFI_AP();
-    netif_cfg.if_desc = "My custom AP interface";
-    netif_cfg.route_prio = 100;  // Приоритет маршрутизации
-
-    // Создаем Wi-Fi интерфейс с пользовательскими параметрами
-    esp_netif_config_t cfg = {
-        .base = &netif_cfg,
-        .stack = ESP_NETIF_NETSTACK_DEFAULT_WIFI_AP,
-    };
-    esp_netif_t *netif = esp_netif_new(&cfg);
-    assert(netif != NULL);
-    ESP_LOGI(TAG, "Network interface created with custom settings.");
-
-    wifi_init_config_t wifi_init_cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_LOGI(TAG, "Initializing Wi-Fi...");
-    ESP_ERROR_CHECK(esp_wifi_init(&wifi_init_cfg));
-    ESP_LOGI(TAG, "Wi-Fi initialized.");
-
-    ESP_LOGI(TAG, "Setting Wi-Fi mode to AP...");
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    ESP_LOGI(TAG, "Wi-Fi mode set to AP.");
-
-    ESP_LOGI(TAG, "Configuring Wi-Fi AP...");
-    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
-    ESP_LOGI(TAG, "Wi-Fi AP configured.");
-
-    ESP_LOGI(TAG, "Starting Wi-Fi...");
-    ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_LOGI(TAG, "Wi-Fi started.");
-
-  // Остановка DHCP сервера, если он был запущен
-    ESP_LOGI(TAG, "Stopping DHCP server...");
-    ESP_ERROR_CHECK(esp_netif_dhcps_stop(netif));
-
-    // Настройка статического IP для AP
-    esp_netif_ip_info_t ip_info;
-    ip4addr_aton(AP_IP, &ip_info.ip);
-    ip4addr_aton(AP_GW, &ip_info.gw);
-    ip4addr_aton(AP_NETMASK, &ip_info.netmask);
-
-    ESP_LOGI(TAG, "Static IP Config - IP: %s, Gateway: %s, Netmask: %s", AP_IP, AP_GW, AP_NETMASK);
-
-  
-
-    // Установка статической конфигурации IP
-  //  ESP_LOGI(TAG, "Setting IP info...");
-  //  ESP_ERROR_CHECK(esp_netif_set_ip_info(netif, &ip_info));
-
-    
-		  esp_err_t err = esp_netif_dhcps_start(netif);
-		if (err != ESP_OK) {
-	    ESP_LOGE(TAG, "DHCP server failed to start: %s", esp_err_to_name(err));
-		} else {
-		    ESP_LOGI(TAG, "DHCP server started.");
-		}
-
-   
-    ESP_LOGI(TAG, "Wi-Fi AP Mode Initialized. SSID: %s, Password: %s", ssid, AP_PASS);
-    ESP_LOGI(TAG, "AP IP Address: %s", AP_IP);
 }
 
+
+
+   void init_wifi_ap() {
+		    
+		    check_and_stop_wifi();
+		// Инициализация netif
+		ESP_LOGI(TAG, "Initializing network interface...");
+		
+		// Создание Wi-Fi интерфейса для AP
+		esp_netif_t *netif = esp_netif_create_default_wifi_ap();
+		assert(netif != NULL);
+		
+		// Инициализируем конфигурацию Wi-Fi
+		wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+		ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+		
+		// Остановка DHCP сервера перед установкой статического IP
+		ESP_ERROR_CHECK(esp_netif_dhcps_stop(netif));
+		
+		// Настройка статического IP для AP
+		esp_netif_ip_info_t ip_info;
+		ip4addr_aton(AP_IP, &ip_info.ip);
+		ip4addr_aton(AP_GW, &ip_info.gw);
+		ip4addr_aton(AP_NETMASK, &ip_info.netmask);
+		ESP_ERROR_CHECK(esp_netif_set_ip_info(netif, &ip_info));
+		
+		ESP_LOGI(TAG, "Setting static IP Config - IP: %s, Gateway: %s, Netmask: %s", AP_IP, AP_GW, AP_NETMASK);
+		
+		// Запуск DHCP сервера
+        ESP_ERROR_CHECK(esp_netif_dhcps_start(netif));
+		
+		// Получение уникального ID из MAC-адреса
+		uint8_t mac[6];
+		ESP_ERROR_CHECK(esp_read_mac(mac, ESP_MAC_WIFI_STA));
+		char unique_id[7];
+		snprintf(unique_id, sizeof(unique_id), "%02X%02X%02X", mac[3], mac[4], mac[5]);
+		
+		// Формирование полного SSID
+		char ssid[32];
+		snprintf(ssid, sizeof(ssid), "%s%s", AP_SSID_PREFIX, unique_id);
+		
+		// Настройка Wi-Fi AP
+		wifi_config_t wifi_config = {
+		    .ap = {
+		        .ssid = {0},
+		        .ssid_len = strlen(ssid),
+		        .password = AP_PASS,
+		        .channel = AP_CHANNEL,
+		        .max_connection = AP_MAX_CONN,
+		        .authmode = WIFI_AUTH_WPA_WPA2_PSK,
+		    },
+		};
+		strcpy((char *)wifi_config.ap.ssid, ssid);
+		
+		if (strlen(AP_PASS) == 0) {
+		    wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+		}
+		
+		ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));  // Устанавливаем режим AP
+		ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));  // Применяем настройки AP
+		ESP_ERROR_CHECK(esp_wifi_start());  // Запускаем Wi-Fi
+		
+		ESP_LOGI(TAG, "Wi-Fi AP Mode Initialized. SSID: %s, Password: %s", ssid, AP_PASS);
+		ESP_LOGI(TAG, "AP IP Address: %s", AP_IP);
+   }
 
 
 void initialize_netifs() {
@@ -546,50 +522,6 @@ return ESP_OK;
 }
 
 
-
-void init_wifi() {
-    // Проверка, был ли Wi-Fi уже инициализирован
-    if (wifi_initialized) {
-        ESP_LOGI("app_main", "Wi-Fi already initialized, skipping re-initialization.");
-        return;
-    }
-
-    // Чтение сохраненного режима Wi-Fi из NVS
-    ESP_LOGI("app_main", "Reading saved Wi-Fi mode from NVS...");
-    wifi_mode_t saved_mode = WIFI_MODE_STA;  // Здесь необходимо добавить код для чтения сохраненного режима
-
-    // Инициализация Wi-Fi в зависимости от сохраненного режима
-    if (saved_mode == WIFI_MODE_STA) {
-        ESP_LOGI("app_main", "Initializing Wi-Fi in STA mode...");
-        esp_netif_create_default_wifi_sta();
-        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-        wifi_config_t wifi_config = {
-            .sta = {
-                .ssid = "Medical",
-                .password = "0445026833"
-            },
-        };
-        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-        ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
-
-        // Регистрация обработчиков событий Wi-Fi для STA
-        esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL);
-        esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL);
-    } else if (saved_mode == WIFI_MODE_AP) {
-		
-		init_wifi_ap();
-      
-    }
-
-    // Запуск Wi-Fi
-    ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_LOGI("app_main", "Wi-Fi started.");
-
-    wifi_initialized = true;  // Установка флага, чтобы избежать повторной инициализации
-}
-
 void init_wifi_from_nvs() {
     uint8_t wifi_mode = WIFI_MODE_STA;
     nvs_handle_t nvs_handle;
@@ -612,9 +544,31 @@ void init_wifi_from_nvs() {
     // Apply the Wi-Fi mode based on the value from NVS
     if (wifi_mode == WIFI_MODE_AP) {
 		ESP_LOGI(TAG, "Initializing Wi-Fi in AP mode");
+	
         init_wifi_ap();  // Initialize as Access Point
        
     } else {
+		
+		 ESP_LOGI("app_main", "Initializing Wi-Fi in STA mode...");
+        esp_netif_create_default_wifi_sta();
+        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+        wifi_config_t wifi_config = {
+            .sta = {
+                .ssid = "Medical",
+                .password = "0445026833"
+            },
+        };
+        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+        ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+
+        // Регистрация обработчиков событий Wi-Fi для STA
+        esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL);
+        esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL);
+        
+        
+        
         ESP_LOGI(TAG, "Initializing Wi-Fi in STA mode");
         esp_wifi_set_mode(WIFI_MODE_STA);
         esp_wifi_start();  // Start the STA mode
@@ -850,61 +804,13 @@ void app_main(void) {
         ESP_ERROR_CHECK(esp_event_loop_create_default());
         event_loop_created = true;
     }  
-    
-     // Инициализация Wi-Fi
-       // init_wifi();
-     
-     
-     
-        // Проверка, был ли Wi-Fi уже инициализирован
-  //  if (wifi_initialized) {
-  //      ESP_LOGI("app_main", "Wi-Fi already initialized, skipping re-initialization.");
-  //      return;
- //   }
+  
 
     // Чтение сохраненного режима Wi-Fi из NVS
     ESP_LOGI("app_main", "Reading saved Wi-Fi mode from NVS...");
-    wifi_mode_t saved_mode = WIFI_MODE_STA;  // Здесь необходимо добавить код для чтения сохраненного режима
-
-    // Инициализация Wi-Fi в зависимости от сохраненного режима
-    if (saved_mode == WIFI_MODE_STA) {
-        ESP_LOGI("app_main", "Initializing Wi-Fi in STA mode...");
-        esp_netif_create_default_wifi_sta();
-        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-        wifi_config_t wifi_config = {
-            .sta = {
-                .ssid = "Medical",
-                .password = "0445026833"
-            },
-        };
-        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-        ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
-
-        // Регистрация обработчиков событий Wi-Fi для STA
-        esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL);
-        esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL);
-    } else if (saved_mode == WIFI_MODE_AP) {
-		
-		init_wifi_ap();
-      
-    }
-
-    // Запуск Wi-Fi
-    ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_LOGI("app_main", "Wi-Fi started.");
-
-   // wifi_initialized = true;  // Установка флага, чтобы избежать повторной инициализации
-     
-     
-     
-     
-     
-     
-	    // Чтение сохранённого режима Wi-Fi из NVS
-	   // ESP_LOGI("app_main", "Initialization WiFi from NVS...");
-	    init_wifi_from_nvs();
+  //  wifi_mode_t saved_mode = WIFI_MODE_STA;  // Здесь необходимо добавить код для чтения сохраненного режима
+  init_wifi_from_nvs();
+  
     // Монтирование файловой системы LittleFS
     if (!filesystem_mounted) {
         mount_littlefs();
