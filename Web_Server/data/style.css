@@ -69,3 +69,18 @@ footer {
     font-size: 0.9em;
     color: #888;
 }
+
+.icon-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin: 20px 0;
+}
+
+.icon {
+    text-align: center;
+}
+
+.icon svg {
+    margin-bottom: 10px;
+}

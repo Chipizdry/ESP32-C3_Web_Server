@@ -209,6 +209,8 @@ void stop_webserver() {
 }
 
 
+
+
 // Функция для остановки Wi-Fi, если он был запущен
 void check_and_stop_wifi() {
     wifi_mode_t mode;
@@ -231,6 +233,8 @@ void check_and_stop_wifi() {
 
 
    void init_wifi_ap() {
+		    
+		    
 		    
 		    check_and_stop_wifi();
 		// Инициализация netif
@@ -328,6 +332,13 @@ const char* get_mime_type(const char* path) {
 
 
 httpd_handle_t start_webserver(void);
+
+// Функция для перезапуска сервера
+void restart_webserver(void) {
+    ESP_LOGI(TAG, "Restarting web server...");
+    stop_webserver();  // Останавливаем текущий сервер
+    start_webserver(); // Запускаем сервер заново
+}
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     static bool ap_mode_started = false;
@@ -472,9 +483,11 @@ esp_err_t wifi_mode_handler(httpd_req_t *req) {
     
   
     if (strstr(buf, "STA") != NULL) {
+		    
         esp_wifi_set_mode(WIFI_MODE_STA);
         ESP_LOGI(TAG, "Switching to STA mode");
     } else if (strstr(buf, "AP") != NULL) {
+		
         init_wifi_ap();  // Вызов функции настройки AP
         ESP_LOGI(TAG, "Switching to AP mode");
     }
@@ -544,6 +557,10 @@ void init_wifi_from_nvs() {
     // Apply the Wi-Fi mode based on the value from NVS
     if (wifi_mode == WIFI_MODE_AP) {
 		ESP_LOGI(TAG, "Initializing Wi-Fi in AP mode");
+		
+		 // Регистрация обработчиков событий Wi-Fi для STA
+        esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL);
+        esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL);
 	
         init_wifi_ap();  // Initialize as Access Point
        
@@ -567,7 +584,7 @@ void init_wifi_from_nvs() {
         esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL);
         esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL);
         
-        
+       
         
         ESP_LOGI(TAG, "Initializing Wi-Fi in STA mode");
         esp_wifi_set_mode(WIFI_MODE_STA);
@@ -611,7 +628,7 @@ esp_err_t data_get_handler(httpd_req_t *req) {
     float temperature = 20.0 + ((float)(rand() % 301)) / 10.0;  // Генерация температуры от 20 до 50 °C
     float current = 0.5 + ((float)(rand() % 100)) / 100.0;  // Генерация тока от 0.5 до 1.5 А
     
-    
+    ESP_LOGI("WEB_SERVER", "Request received");
      // Формирование JSON-ответа
     char response[200];
     snprintf(response, sizeof(response),
@@ -690,6 +707,8 @@ httpd_handle_t start_webserver(void) {
     
     if (httpd_start(&server, &config) == ESP_OK) {
 		
+		
+		
 		   ESP_LOGI(TAG, "Web server started on port: %d", config.server_port);
 				httpd_uri_t root_get_uri = {
 				    .uri = "/",  // Обработка корневого запроса
@@ -715,12 +734,12 @@ httpd_handle_t start_webserver(void) {
 	            };
 	            httpd_register_uri_handler(server, &style_get_uri);
    
-		   // Регистрация URI-обработчика
-		   httpd_uri_t data_uri = {
-		    .uri      = "/data",
-		    .method   = HTTP_GET,
-		    .handler  = data_get_handler,
-		    .user_ctx = NULL
+			   // Регистрация URI-обработчика
+			    httpd_uri_t data_uri = {
+			    .uri      = "/data",
+			    .method   = HTTP_GET,
+			    .handler  = data_get_handler,
+			    .user_ctx = NULL
 		        };
 		
 		      httpd_register_uri_handler(server, &data_uri);
