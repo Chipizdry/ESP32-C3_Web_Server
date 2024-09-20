@@ -83,4 +83,39 @@ footer {
 
 .icon svg {
     margin-bottom: 10px;
+} 
+
+
+#control {
+    position: relative; /* Относительное позиционирование для контейнера */
+}
+
+.icon {
+    position: absolute; /* Абсолютное позиционирование для иконок */
+    text-align: center; /* Центрирование текста под иконкой */
+}
+
+.battery-icon {
+    top: 4px;  /* Вертикальная позиция */
+    left: 170px; /* Горизонтальная позиция */
+}
+
+.inverter-icon {
+    top: 33px;
+    left: 60px;
+}
+
+.power-grid-icon {
+    top: 15px;
+    left: 0px;
+}
+
+.icon svg {
+    display: block;
+    margin: 0 auto; /* Для центрирования SVG внутри блока */
+}
+
+.icon p {
+    margin-top: 5px;
+    font-size: 12px;
 }
