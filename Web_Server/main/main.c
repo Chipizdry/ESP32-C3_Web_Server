@@ -573,8 +573,11 @@ void init_wifi_from_nvs() {
 
         wifi_config_t wifi_config = {
             .sta = {
-                .ssid = "Medical",
-                .password = "0445026833"
+              //  .ssid = "Medical",
+              //  .password = "0445026833"
+                
+                 .ssid = "TP-Link_FA4F",
+                .password = "19481555"
             },
         };
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));

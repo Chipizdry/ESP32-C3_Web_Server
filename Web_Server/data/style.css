@@ -14,7 +14,7 @@ body {
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    max-width: 500px;
+    max-width: 600px;
     width: 100%;
     text-align: center;
 }
@@ -96,7 +96,7 @@ footer {
 }
 
 .battery-icon {
-    top: 30px;  /* Вертикальная позиция */
+    top: 27px;  /* Вертикальная позиция */
     left: 170px; /* Горизонтальная позиция */
 }
 
@@ -108,6 +108,11 @@ footer {
 .power-grid-icon {
     top: 15px;
     left: 0px;
+}
+
+.power-icon {
+    top: 25px;
+    left: 250px;
 }
 
 .icon svg {
