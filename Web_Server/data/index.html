@@ -54,8 +54,7 @@
             height: 400px;
         }
         
-        
-            /* Стили для модального окна */
+       
         /* Стили для модального окна */
         .modal {
             display: none;
@@ -65,12 +64,12 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(8, 8, 8, 0.5);
             justify-content: center;
             align-items: center;
         }
         .modal-content {
-            background-color: #fff;
+            background-color: #ffffff;
             padding: 20px;
             border-radius: 5px;
             text-align: center;
@@ -95,15 +94,32 @@
 <body>
     <div class="container">
     
-     <!-- Модальное окно для логина -->
-    <div id="loginModal" class="modal">
-        <div class="modal-content">
-            <h2>Введите логин и пароль</h2>
-            <input type="text" id="username" placeholder="Логин">
-            <input type="password" id="password" placeholder="Пароль">
-            <button onclick="login()">Войти</button>
+
+                <!-- Модальные окна -->
+        <div id="batteryModal" class="modal">
+            <div class="modal-content">
+                <span class="close" id="closeBattery">&times;</span>
+                <p>Информация о батарее</p>
+                <input type="text" id="username" placeholder="Логин">
+                <input type="password" id="password" placeholder="Пароль">
+            </div>
         </div>
-    </div>
+
+        <div id="inverterModal" class="modal">
+            <div class="modal-content">
+                <span class="close" id="closeInverter">&times;</span>
+                <p>Информация о инверторе</p>
+            </div>
+        </div>
+     <!-- Модальное окно для логина -->
+        <div id="loginModal" class="modal">
+            <div class="modal-content">
+                <h2>Введите логин и пароль</h2>
+                <input type="text" id="username" placeholder="Логин">
+                <input type="password" id="password" placeholder="Пароль">
+                <button onclick="login()">Войти</button>
+            </div>
+        </div>
     
       <!-- Модальное окно для переключения режима Wi-Fi -->
         <div id="modeConfirmationModal" class="modal">
@@ -130,7 +146,8 @@
    
     <div class="icon-container">
              <!-- Иконка батареи -->
-                <div class="icon battery-icon">
+                
+                <div class="icon battery-icon" id="batteryIcon">
                     <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
                     width="600" height="300" viewBox="0 0 3100 1560" preserveAspectRatio="xMidYMid meet">
                 
@@ -150,33 +167,33 @@
                         </g>
                     </svg>     
                 </div>
-        <!-- Иконка инвертора напряжения -->
-         <div class="icon inverter-icon">
+                   <!-- Иконка инвертора напряжения -->
+        
+                        <div class="icon inverter-icon" id="inverterIcon">
+                    <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
+                        width="60.000000pt" height="30.000000pt" viewBox="0 0 172.000000 85.000000"
+                        preserveAspectRatio="xMidYMid meet">
 
-<svg version="1.0" xmlns="http://www.w3.org/2000/svg"
- width="60.000000pt" height="30.000000pt" viewBox="0 0 172.000000 85.000000"
- preserveAspectRatio="xMidYMid meet">
-
-        <g transform="translate(0.000000,85.000000) scale(0.100000,-0.100000)"
-            fill="#000000" stroke="none">
-            <path d="M921 826 c-49 -27 -50 -37 -51 -404 0 -372 2 -386 55 -410 41 -19
-            697 -17 734 2 49 26 51 41 51 406 0 365 -2 380 -51 406 -39 20 -702 20 -738 0z
-            m709 -33 c0 -10 -703 -713 -712 -713 -5 0 -8 153 -8 340 0 327 1 341 20 360
-            19 19 33 20 360 20 187 0 340 -3 340 -7z m40 -373 c0 -327 -1 -341 -20 -360
-            -19 -19 -33 -20 -360 -20 -187 0 -340 3 -340 7 0 10 703 713 712 713 5 0 8
-            -153 8 -340z"/>
-            <path d="M1025 690 c-12 -4 -27 -15 -35 -25 -20 -25 7 -39 37 -20 35 23 64 18
-            111 -20 24 -19 53 -37 64 -41 50 -15 144 33 108 56 -10 6 -23 4 -37 -5 -33
-            -22 -65 -18 -103 13 -63 52 -97 62 -145 42z"/>
-            <path d="M1290 260 c0 -19 7 -20 140 -20 133 0 140 1 140 20 0 19 -7 20 -140
-            20 -133 0 -140 -1 -140 -20z"/>
-            <path d="M1290 180 c0 -18 7 -20 60 -20 53 0 60 2 60 20 0 18 -7 20 -60 20
-            -53 0 -60 -2 -60 -20z"/>
-            <path d="M1450 180 c0 -18 7 -20 60 -20 53 0 60 2 60 20 0 18 -7 20 -60 20
-            -53 0 -60 -2 -60 -20z"/>
-            <path  id="leftLine" d="M0 425 l0 -25 430 0 430 0 0 25 0 25 -430 0 -430 0 0 -25z"/>
-        </g>
-</svg>
+                        <g transform="translate(0.000000,85.000000) scale(0.100000,-0.100000)"
+                        fill="#000000" stroke="none">
+                        <path d="M921 826 c-49 -27 -50 -37 -51 -404 0 -372 2 -386 55 -410 41 -19
+                        697 -17 734 2 49 26 51 41 51 406 0 365 -2 380 -51 406 -39 20 -702 20 -738 0z
+                        m709 -33 c0 -10 -703 -713 -712 -713 -5 0 -8 153 -8 340 0 327 1 341 20 360
+                        19 19 33 20 360 20 187 0 340 -3 340 -7z m40 -373 c0 -327 -1 -341 -20 -360
+                        -19 -19 -33 -20 -360 -20 -187 0 -340 3 -340 7 0 10 703 713 712 713 5 0 8
+                        -153 8 -340z"/>
+                        <path d="M1025 690 c-12 -4 -27 -15 -35 -25 -20 -25 7 -39 37 -20 35 23 64 18
+                        111 -20 24 -19 53 -37 64 -41 50 -15 144 33 108 56 -10 6 -23 4 -37 -5 -33
+                        -22 -65 -18 -103 13 -63 52 -97 62 -145 42z"/>
+                        <path d="M1290 260 c0 -19 7 -20 140 -20 133 0 140 1 140 20 0 19 -7 20 -140
+                        20 -133 0 -140 -1 -140 -20z"/>
+                        <path d="M1290 180 c0 -18 7 -20 60 -20 53 0 60 2 60 20 0 18 -7 20 -60 20
+                        -53 0 -60 -2 -60 -20z"/>
+                        <path d="M1450 180 c0 -18 7 -20 60 -20 53 0 60 2 60 20 0 18 -7 20 -60 20
+                        -53 0 -60 -2 -60 -20z"/>
+                        <path  id="leftLine" d="M0 425 l0 -25 430 0 430 0 0 25 0 25 -430 0 -430 0 0 -25z"/>
+                        </g>
+                    </svg>
            
         </div>
         <!-- Иконка сети электропитания -->
@@ -409,6 +426,52 @@
             updateBatteryFill(currentLevel);
         }, 100);
     </script>
+
+   <script>
+            
+            // Получаем элементы модальных окон
+                const batteryModal = document.getElementById('batteryModal');
+                const inverterModal = document.getElementById('inverterModal');
+                
+                // Получаем иконки
+                const batteryIcon = document.getElementById('batteryIcon');
+                const inverterIcon = document.getElementById('inverterIcon');
+                
+                // Получаем кнопки закрытия модальных окон
+                const closeBattery = document.getElementById('closeBattery');
+                const closeInverter = document.getElementById('closeInverter');
+                
+                // Открытие модального окна для батареи
+                batteryIcon.onclick = function() {
+                    batteryModal.style.display = 'block';
+                }
+                
+                // Открытие модального окна для инвертора
+                inverterIcon.onclick = function() {
+                    inverterModal.style.display = 'block';
+                }
+                
+                // Закрытие модальных окон
+                closeBattery.onclick = function() {
+                    batteryModal.style.display = 'none';
+                }
+                closeInverter.onclick = function() {
+                    inverterModal.style.display = 'none';
+                }
+                
+                // Закрытие модального окна при клике вне его
+                window.onclick = function(event) {
+                    if (event.target == batteryModal) {
+                        batteryModal.style.display = 'none';
+                    }
+                    if (event.target == inverterModal) {
+                        inverterModal.style.display = 'none';
+                    }
+                }
+                
+    </script>
+
+
 
 <script>
     /*
