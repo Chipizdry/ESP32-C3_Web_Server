@@ -6,104 +6,43 @@
     <link rel="stylesheet" href="/style.css">
     <link rel="icon" type="image/png" href="/favicon.png">
     <title>FlyWheel Web Server</title>
-    <style>
-        /* Стили для контейнера вкладок */
-        .tabs {
-            display: flex; /* Вкладки располагаются в строку */
-            border-bottom: 1px solid #ccc; /* Нижняя граница под вкладками */
-        }
-
-        /* Стили для каждой вкладки */
-        .tab {
-            flex: 1; /* Вкладки занимают равную ширину */
-            text-align: center; /* Центрируем текст внутри вкладок */
-            cursor: pointer;
-            padding: 10px;
-            background-color: #f1f1f1;
-            border-right: 1px solid #ccc; /* Горизонтальная граница между вкладками */
-        }
-
-        /* Убираем правую границу у последней вкладки */
-        .tab:last-child {
-            border-right: none;
-        }
-
-        /* Контент вкладок */
-        .tabcontent {
-            display: none;
-            padding: 15px;
-            border: 1px solid #ccc;
-            border-top: none; /* Убираем верхнюю границу, чтобы она не пересекалась с вкладками */
-            margin-top: 0;
-        }
-
-        /* Стиль для активной вкладки */
-        .tab.active {
-            background-color: #4CAF50;
-            border-bottom: 1px solid #fff; /* Имитируем активную вкладку */
-        }
-
-        /* Активный контент вкладки */
-        .tabcontent.active {
-            display: block;
-        }
-
-        /* Стиль для контейнера графика */
-        #chartContainer {
-            width: 100%;
-            height: 400px;
-        }
-        
-       
-        /* Стили для модального окна */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(8, 8, 8, 0.5);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 5px;
-            text-align: center;
-        }
-        .modal input {
-            display: block;
-            margin: 10px auto;
-            padding: 10px;
-            width: 80%;
-        }
-        .modal button {
-            padding: 10px 20px;
-            cursor: pointer;
-        }
-        
-        
-    </style>
-
+    
     <!-- Подключаем библиотеку Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
     
-
-                <!-- Модальные окна -->
-        <div id="batteryModal" class="modal">
-            <div class="modal-content">
-                <span class="close" id="closeBattery">&times;</span>
-                <p>Информация о батарее</p>
-                <input type="text" id="username" placeholder="Логин">
-                <input type="password" id="password" placeholder="Пароль">
-            </div>
+        <div class="connection-status">
+            <span id="connectionIndicator" class="status-indicator"></span>
+            Соединение с сервером
         </div>
+                <!-- Модальные окна -->
+                <div id="batteryModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close" id="closeBattery">&times;</span>
+                        <p>Информация о батарее</p>
+                        
+                        <!-- Текущее напряжение (в Вольтах) -->
+                        <label for="currentVoltage">Текущее напряжение, В:</label>
+                        <input type="text" id="currentVoltage" disabled value="12.5"> <!-- пример значения -->
+                
+                        <!-- Уровень заряда (в процентах) -->
+                        <label for="chargeLevel">Уровень заряда, %:</label>
+                        <input type="text" id="chargeLevel" disabled value="85"> <!-- пример значения -->
+                
+                        <!-- Нижний порог отключения (с меню прокрутки) -->
+                        <label for="lowThreshold">Нижний порог отключения, В:</label>
+                        <input type="number" id="lowThreshold" min="10" max="15" step="0.1" value="10.5">
+                
+                        <!-- Верхний порог напряжения (с меню прокрутки) -->
+                        <label for="highThreshold">Верхний порог напряжения, В:</label>
+                        <input type="number" id="highThreshold" min="12" max="17" step="0.1" value="14.5">
+                
+                        <!-- Кнопка Сохранить -->
+                        <button onclick="saveBatterySettings()">Сохранить</button>
+                    </div>
+                </div>
 
         <div id="inverterModal" class="modal">
             <div class="modal-content">
@@ -133,6 +72,7 @@
         </div>
     
         <h2>FlyWheel Control Panel</h2>
+
 
         <!-- Вкладки -->
         <div class="tabs">
@@ -443,12 +383,13 @@
                 
                 // Открытие модального окна для батареи
                 batteryIcon.onclick = function() {
-                    batteryModal.style.display = 'block';
+                    batteryModal.style.display = 'flex';
                 }
                 
                 // Открытие модального окна для инвертора
                 inverterIcon.onclick = function() {
-                    inverterModal.style.display = 'block';
+                    inverterModal.style.display = 'flex';
+                    
                 }
                 
                 // Закрытие модальных окон
@@ -636,7 +577,9 @@ function updateChart(newSpeed) {
 
 
     // Функция для обновления данных
+    /*
 function updateData() {
+    const indicator = document.getElementById('connectionIndicator');
     var xhr = new XMLHttpRequest();
     xhr.open("GET", "/data", true);
     xhr.onreadystatechange = function () {
@@ -651,6 +594,58 @@ function updateData() {
             updateChart(data.speed);
         }
     };
+    xhr.send();
+}
+*/
+// Функция для обновления данных и проверки состояния соединения
+// Функция для обновления данных и проверки состояния соединения
+function updateData() {
+    const indicator = document.getElementById('connectionIndicator');
+    var xhr = new XMLHttpRequest();
+    var requestTimedOut = false;
+
+    xhr.open("GET", "/data", true);
+    
+    // Устанавливаем таймаут на 5 секунд (5000 мс)
+    xhr.timeout = 2000;
+
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState == 4) {
+            if (!requestTimedOut) {
+                if (xhr.status == 200) {
+                    // Сервер ответил успешно, обновляем данные
+                    var data = JSON.parse(xhr.responseText);
+                    document.getElementById("voltage").innerText = data.voltage;
+                    document.getElementById("speed").innerText = data.speed;
+                    document.getElementById("temperature").innerText = data.temperature;
+                    document.getElementById("current").innerText = data.current;
+
+                    // Обновляем данные графика
+                    updateChart(data.speed);
+
+                    // Соединение установлено, индикатор становится зелёным
+                    indicator.classList.add('active');
+                } else {
+                    // Сервер ответил с ошибкой, соединение считается потерянным
+                    indicator.classList.remove('active');
+                }
+            }
+        }
+    };
+    
+    // Обработка ошибок сети
+    xhr.onerror = function () {
+        // Ошибка соединения, индикатор становится красным
+        indicator.classList.remove('active');
+    };
+
+    // Обработка таймаута
+    xhr.ontimeout = function () {
+        // Запрос занял слишком много времени, считаем, что соединение потеряно
+        requestTimedOut = true;
+        indicator.classList.remove('active');
+    };
+    
     xhr.send();
 }
 

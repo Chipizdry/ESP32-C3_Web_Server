@@ -19,13 +19,61 @@ body {
     text-align: center;
 }
 
+
+  /* Стили для контейнера вкладок */
+  .tabs {
+    display: flex; /* Вкладки располагаются в строку */
+    border-bottom: 1px solid #ccc; /* Нижняя граница под вкладками */
+}
+
+/* Стили для каждой вкладки */
+.tab {
+    flex: 1; /* Вкладки занимают равную ширину */
+    text-align: center; /* Центрируем текст внутри вкладок */
+    cursor: pointer;
+    padding: 10px;
+    background-color: #f1f1f1;
+    border-right: 1px solid #ccc; /* Горизонтальная граница между вкладками */
+}
+
+/* Убираем правую границу у последней вкладки */
+.tab:last-child {
+    border-right: none;
+}
+
+/* Контент вкладок */
+.tabcontent {
+    display: none;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-top: none; /* Убираем верхнюю границу, чтобы она не пересекалась с вкладками */
+    margin-top: 0;
+}
+
+/* Стиль для активной вкладки */
+.tab.active {
+    background-color: #4CAF50;
+    border-bottom: 1px solid #fff; /* Имитируем активную вкладку */
+}
+
+/* Активный контент вкладки */
+.tabcontent.active {
+    display: block;
+}
+
+/* Стиль для контейнера графика */
+#chartContainer {
+    width: 100%;
+    height: 400px;
+}
+
 h1 {
     color: #333;
     margin-bottom: 20px;
 }
 
 a {
-    color: #4CAF50;
+    color: #4de752;
     text-decoration: none;
     margin-top: 20px;
 }
@@ -51,7 +99,7 @@ input[type="text"], input[type="password"] {
 
 input[type="submit"] {
     padding: 12px 25px;
-    background-color: #4CAF50;
+    background-color: #47e84c;
     color: white;
     border: none;
     border-radius: 5px;
@@ -123,4 +171,55 @@ footer {
 .icon p {
     margin-top: 5px;
     font-size: 12px;
+}
+
+
+/* Стили для модального окна */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(8, 8, 8, 0.9);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 5px;
+    text-align: center;
+    width: 50%; /* Фиксированная ширина для всех модальных окон */
+    max-width: 600px; /* Ограничение по максимальной ширине */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Для более красивого отображения */
+}
+
+.modal input {
+    display: block;
+    margin: 10px auto;
+    padding: 10px;
+    width: 80%;
+}
+
+.modal button {
+    padding: 10px 20px;
+    cursor: pointer;
+}
+/* Стиль для индикатора соединения */
+.status-indicator {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background-color: red; /* По умолчанию красный (нет соединения) */
+    margin-right: 10px;
+}
+
+/* Если соединение активное — цвет зелёный */
+.status-indicator.active {
+    background-color: green;
 }
