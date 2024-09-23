@@ -149,14 +149,14 @@
     C 20.496094 98.65625 20.464844 98.828125 20.09375 98.878906 C 19.566406 98.953125 19.292969 99.34375 19.480469 99.738281 
     C 19.59375 99.960938 19.921875 100.140625 20.238281 100.140625 C 20.332031 100.140625 20.378906 100.183594 20.378906 100.265625 
     C 20.378906 100.332031 20.429688 100.488281 20.488281 100.613281 C 20.601562 100.859375 20.988281 101.035156 21.273438 100.972656
-     C 21.539062 100.914062 21.796875 100.65625 21.847656 100.394531 C 21.890625 100.171875 21.910156 100.152344 22.175781 100.117188
-      C 23.019531 100 23.035156 99.078125 22.199219 98.898438 C 21.855469 98.824219 21.761719 98.65625 22.0625 98.65625 C 22.304688 
-      98.65625 22.648438 98.5 22.742188 98.351562 C 22.984375 97.949219 22.640625 97.417969 22.140625 97.417969 C 21.933594 97.417969
-       21.882812 97.390625 21.882812 97.292969 C 21.882812 97.167969 21.933594 97.167969 24.851562 97.167969 L 27.820312 97.167969 
-       L 27.820312 99.621094 L 25.410156 100.722656 C 20.773438 102.847656 20.59375 102.941406 20.480469 103.121094 C 20.421875 
-       103.226562 20.378906 103.480469 20.378906 103.765625 L 20.378906 104.230469 L 20.128906 104.230469 C 19.957031 104.230469 
-       19.816406 104.285156 19.65625 104.402344 C 19.472656 104.550781 19.429688 104.625 19.429688 104.847656 C 19.429688 105.070312 
-       19.472656 105.144531 19.65625 105.292969 C 19.816406 105.410156 19.957031 105.46875 20.128906 105.46875 C 20.496094 105.46875 
+    C 21.539062 100.914062 21.796875 100.65625 21.847656 100.394531 C 21.890625 100.171875 21.910156 100.152344 22.175781 100.117188
+    C 23.019531 100 23.035156 99.078125 22.199219 98.898438 C 21.855469 98.824219 21.761719 98.65625 22.0625 98.65625 C 22.304688 
+    98.65625 22.648438 98.5 22.742188 98.351562 C 22.984375 97.949219 22.640625 97.417969 22.140625 97.417969 C 21.933594 97.417969
+    21.882812 97.390625 21.882812 97.292969 C 21.882812 97.167969 21.933594 97.167969 24.851562 97.167969 L 27.820312 97.167969 
+    L 27.820312 99.621094 L 25.410156 100.722656 C 20.773438 102.847656 20.59375 102.941406 20.480469 103.121094 C 20.421875 
+    103.226562 20.378906 103.480469 20.378906 103.765625 L 20.378906 104.230469 L 20.128906 104.230469 C 19.957031 104.230469 
+    19.816406 104.285156 19.65625 104.402344 C 19.472656 104.550781 19.429688 104.625 19.429688 104.847656 C 19.429688 105.070312 
+    19.472656 105.144531 19.65625 105.292969 C 19.816406 105.410156 19.957031 105.46875 20.128906 105.46875 C 20.496094 105.46875 
        20.464844 105.640625 20.101562 105.691406 C 19.59375 105.757812 19.308594 106.117188 19.457031 106.5 C 19.550781 106.742188 
        19.886719 106.953125 20.1875 106.953125 C 20.332031 106.953125 20.378906 106.984375 20.378906 107.078125 C 20.378906 
        107.144531 20.429688 107.300781 20.488281 107.425781 C 20.601562 107.671875 20.988281 107.84375 21.273438 107.785156 
@@ -325,6 +325,15 @@
                 <!-- Кнопка сохранения настроек -->
                 <button type="button" onclick="saveSettings()">Save</button>
             </form>
+
+                        <!-- Страница обновления прошивки -->
+            <form id="uploadForm" enctype="multipart/form-data">
+                <h3>Upload Firmware</h3>
+                <input type="file" id="firmwareFile" name="firmware" accept=".bin">
+                <br><br>
+                <button type="button" onclick="uploadFirmware()">Upload Firmware</button>
+                <p id="status"></p>
+            </form>
         </div>
     </div>
 
@@ -366,6 +375,38 @@
             updateBatteryFill(currentLevel);
         }, 100);
     </script>
+
+
+
+            <script>
+                function uploadFirmware() {
+                    const fileInput = document.getElementById('firmwareFile');
+                    const status = document.getElementById('status');
+                
+                    if (fileInput.files.length === 0) {
+                        status.innerHTML = "Please select a firmware file!";
+                        return;
+                    }
+                
+                    const formData = new FormData();
+                    formData.append("firmware", fileInput.files[0]);
+                
+                    // Отправляем POST запрос с файлом прошивки на сервер
+                    fetch('/ota', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.text())
+                    .then(result => {
+                        status.innerHTML = "Firmware uploaded successfully!";
+                        console.log(result);
+                    })
+                    .catch(error => {
+                        status.innerHTML = "Error uploading firmware!";
+                        console.error('Error:', error);
+                    });
+                }
+                </script>
 
    <script>
             
@@ -574,31 +615,52 @@ function updateChart(newSpeed) {
     speedChart.update();  
 }
 
+// Функция для сохранения настроек
+function saveSettings() {
+    // Собираем данные из формы
+    const ssid = document.getElementById('wifi_ssid').value;
+    const password = document.getElementById('wifi_password').value;
 
+    // Проверка наличия данных
+    if (!ssid || !password) {
+        alert("Пожалуйста, введите SSID и пароль");
+        return;
+    }
 
-    // Функция для обновления данных
-    /*
-function updateData() {
-    const indicator = document.getElementById('connectionIndicator');
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", "/data", true);
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState == 4 && xhr.status == 200) {
-            var data = JSON.parse(xhr.responseText);
-            document.getElementById("voltage").innerText = data.voltage;
-            document.getElementById("speed").innerText = data.speed;
-            document.getElementById("temperature").innerText = data.temperature;
-            document.getElementById("current").innerText = data.current;
-
-            // Обновляем данные графика
-            updateChart(data.speed);
-        }
+    // Формируем объект с данными
+    const data = {
+        ssid: ssid,
+        password: password
     };
-    xhr.send();
+
+    // Отправляем данные на backend с использованием fetch
+    fetch('/save_wifi_settings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        } else {
+            throw new Error('Ошибка сохранения настроек');
+        }
+    })
+    .then(result => {
+        alert('Настройки Wi-Fi сохранены');
+        // Можно обновить страницу или показать сообщение о сохранении
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('Не удалось сохранить настройки');
+    });
 }
-*/
-// Функция для обновления данных и проверки состояния соединения
-// Функция для обновления данных и проверки состояния соединения
+
+
+
+
 function updateData() {
     const indicator = document.getElementById('connectionIndicator');
     var xhr = new XMLHttpRequest();
@@ -720,7 +782,7 @@ function updateData() {
             modal.style.display = 'none';
         }
 
-
+/*
 function saveSettings() {
     const settings = {
         max_current: document.getElementById('maxCurrentRange').value,
@@ -742,7 +804,7 @@ function saveSettings() {
         }
     });
 }
-
+*/
 
 // Пример команды с бэка
 

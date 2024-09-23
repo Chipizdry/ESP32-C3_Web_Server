@@ -573,11 +573,11 @@ void init_wifi_from_nvs() {
 
         wifi_config_t wifi_config = {
             .sta = {
-              //  .ssid = "Medical",
-              //  .password = "0445026833"
+                .ssid = "Medical",
+                .password = "0445026833"
                 
-                 .ssid = "TP-Link_FA4F",
-                .password = "19481555"
+             //    .ssid = "TP-Link_FA4F",
+             //  .password = "19481555"
             },
         };
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
@@ -595,6 +595,67 @@ void init_wifi_from_nvs() {
     }
 }
 
+
+
+esp_err_t save_wifi_settings_handler(httpd_req_t *req) {
+    // Буфер для приема данных
+    char buf[100];
+    int ret, remaining = req->content_len;
+
+    // Буфер для хранения SSID и пароля
+    char ssid[32] = {0};
+    char password[64] = {0};
+
+    // Читаем содержимое POST-запроса
+    while (remaining > 0) {
+        // Чтение запроса в буфер
+        ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)));
+        if (ret <= 0) {
+            // Ошибка при получении данных
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                httpd_resp_send_408(req);
+            }
+            return ESP_FAIL;
+        }
+
+        // Обработка содержимого запроса
+        remaining -= ret;
+        buf[ret] = '\0'; // Добавляем нулевой символ для завершения строки
+
+        // Примерный парсинг данных (зависит от формата, как их передает фронтенд)
+        sscanf(buf, "{\"ssid\":\"%31[^\"]\",\"password\":\"%63[^\"]\"}", ssid, password);
+    }
+
+    ESP_LOGI(TAG, "Received SSID: %s, Password: %s", ssid, password);
+
+    // Сохраняем настройки Wi-Fi в NVS
+    nvs_handle_t nvs_handle;
+    esp_err_t err = nvs_open("wifi_config", NVS_READWRITE, &nvs_handle);
+    if (err == ESP_OK) {
+        nvs_set_str(nvs_handle, "ssid", ssid);
+        nvs_set_str(nvs_handle, "password", password);
+        nvs_commit(nvs_handle);
+        nvs_close(nvs_handle);
+    } else {
+        ESP_LOGE(TAG, "Error opening NVS handle!");
+        return ESP_FAIL;
+    }
+
+    // Применение новых настроек Wi-Fi
+    wifi_config_t wifi_config = {};
+    strncpy((char *)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
+    strncpy((char *)wifi_config.sta.password, password, sizeof(wifi_config.sta.password));
+
+    esp_wifi_disconnect();
+    esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config);
+    esp_wifi_connect();
+
+    // Отправляем ответ клиенту
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{\"status\": \"success\"}");
+
+    return ESP_OK;
+}
 
 // Обработчик для POST-запросов
 esp_err_t post_handler(httpd_req_t *req) {
@@ -780,6 +841,14 @@ httpd_handle_t start_webserver(void) {
 	            .user_ctx = NULL
 	        };
 	        httpd_register_uri_handler(server, &post_uri);
+	        
+	        httpd_uri_t save_wifi_settings_uri = {
+                .uri = "/save_wifi_settings",
+                .method = HTTP_POST,
+                .handler = save_wifi_settings_handler,
+                .user_ctx = NULL
+            };
+httpd_register_uri_handler(server, &save_wifi_settings_uri);
     } else {
         ESP_LOGE(TAG, "Failed to start the server");
     }
