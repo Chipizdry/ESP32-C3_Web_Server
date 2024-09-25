@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <esp_log.h>
+#include <esp_ota_ops.h>
 #include <esp_err.h>
 #include <esp_system.h>
 #include <esp_netif.h>
@@ -10,6 +11,7 @@
 #include <esp_wifi.h>
 #include <esp_http_server.h>
 #include <nvs_flash.h>
+#include "esp_partition.h"
 #include "esp_littlefs.h"
 #include "dirent.h"
 #include "esp_err.h"
@@ -325,6 +327,7 @@ const char* get_mime_type(const char* path) {
     if (strcmp(ext, ".png") == 0) return "image/png";
     if (strcmp(ext, ".jpg") == 0 || strcmp(ext, ".jpeg") == 0) return "image/jpeg";
     if (strcmp(ext, ".gif") == 0) return "image/gif";
+    if (strcmp(ext, ".bin") == 0) return "application/octet-stream"; 
     // Добавьте другие типы по необходимости
     return "text/plain";
 }
@@ -596,6 +599,84 @@ void init_wifi_from_nvs() {
 }
 
 
+static esp_err_t read_file_to_buffer(const char *path, char *buffer, size_t buffer_size) {
+    FILE *f = fopen(path, "r");
+    if (!f) {
+        ESP_LOGE(TAG, "Failed to open file for reading: %s", path);
+        return ESP_FAIL;
+    }
+
+    size_t len = fread(buffer, 1, buffer_size, f);
+    buffer[len] = '\0';  // Завершаем строку нулевым символом
+    fclose(f);
+
+    return ESP_OK;
+}
+
+esp_err_t ota_post_handler(httpd_req_t *req) {
+    esp_err_t err;
+    char ota_write_data[1024]; // Буфер для получаемых данных
+    int total_len = req->content_len;
+    int received_len = 0;
+    esp_ota_handle_t update_handle = 0;
+    
+    const esp_partition_t *running_partition = esp_ota_get_running_partition();
+    ESP_LOGI(TAG,"Current running partition: %s\n", running_partition->label);
+
+    const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
+    if (update_partition == NULL) {
+        ESP_LOGE(TAG, "Failed to find update partition");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "OTA Update initiated");
+
+    err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_ota_begin failed, error=%d", err);
+        return err;
+    }
+
+   while (received_len < total_len) {
+    // Получаем данные
+    int len = httpd_req_recv(req, ota_write_data, sizeof(ota_write_data));
+    if (len < 0) {
+        ESP_LOGE(TAG, "Error receiving data");
+        esp_ota_abort(update_handle);
+        return ESP_FAIL;
+    }
+
+    // Логируем размер полученных данных
+    ESP_LOGI(TAG, "Received %d bytes", len);
+
+    // Пишем данные во флеш
+    err = esp_ota_write(update_handle, ota_write_data, len);
+    ESP_LOGI(TAG, "First byte: %x", ota_write_data[0]);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_ota_write failed, error=%d", err);
+        esp_ota_abort(update_handle);
+        return ESP_FAIL;
+    }
+    received_len += len;
+}
+
+
+    err = esp_ota_end(update_handle);
+    if (err == ESP_OK) {
+        err = esp_ota_set_boot_partition(update_partition);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "OTA successful, rebooting...");
+            esp_restart();
+        } else {
+            ESP_LOGE(TAG, "Failed to set boot partition, error=%d", err);
+        }
+    } else {
+        ESP_LOGE(TAG, "OTA end failed, error=%d", err);
+    }
+
+    return ESP_OK;
+}
+
 
 esp_err_t save_wifi_settings_handler(httpd_req_t *req) {
     // Буфер для приема данных
@@ -764,7 +845,8 @@ httpd_handle_t start_webserver(void) {
 	 ESP_LOGI(TAG, "Initializing web server...");
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = 80;
-
+    config.max_uri_handlers = 16;  // Увеличиваем количество слотов для URI-обработчиков
+    config.stack_size = 8192;  // Увеличьте размер стека
     httpd_handle_t server = NULL;
     
    
@@ -848,7 +930,22 @@ httpd_handle_t start_webserver(void) {
                 .handler = save_wifi_settings_handler,
                 .user_ctx = NULL
             };
-httpd_register_uri_handler(server, &save_wifi_settings_uri);
+            httpd_register_uri_handler(server, &save_wifi_settings_uri);
+
+       
+	      httpd_uri_t ota_post_uri = {
+            .uri       = "/ota",
+            .method    = HTTP_POST,
+            .handler   = ota_post_handler,
+            .user_ctx  = NULL
+               };
+             if (httpd_register_uri_handler(server, &ota_post_uri) == ESP_OK) {
+            ESP_LOGI(TAG, "OTA POST handler registered at URI: /ota");
+        } else {
+            ESP_LOGE(TAG, "Failed to register OTA POST handler");
+        }
+    
+
     } else {
         ESP_LOGE(TAG, "Failed to start the server");
     }

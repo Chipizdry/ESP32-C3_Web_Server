@@ -1,6 +1,6 @@
 {
     "version":            "1.1",
-    "project_name":       "app-template",
+    "project_name":       "Web_Server",
     "project_version":    "1",
     "project_path":       "C:/Work/Espressif_work/Web_Server",
     "idf_path":           "G:/Espressif/frameworks/esp-idf-v5.2.2",
@@ -8,8 +8,8 @@
     "config_file":        "C:/Work/Espressif_work/Web_Server/sdkconfig",
     "config_defaults":    "",
     "bootloader_elf":     "C:/Work/Espressif_work/Web_Server/build/bootloader/bootloader.elf",
-    "app_elf":            "app-template.elf",
-    "app_bin":            "app-template.bin",
+    "app_elf":            "Web_Server.elf",
+    "app_bin":            "Web_Server.bin",
     "build_type":         "flash_app",
     "git_revision":       "v5.2.2-dirty",
     "target":             "esp32c3",
@@ -815,13 +815,13 @@
             "dir": "C:/Work/Espressif_work/Web_Server/main",
             "type": "LIBRARY",
             "lib": "__idf_main",
-            "reqs": [ "esp_wifi", "esp_netif", "esp_http_server", "nvs_flash", "joltwallet__littlefs" ],
+            "reqs": [ "esp_wifi", "esp_netif", "esp_http_server", "nvs_flash", "joltwallet__littlefs", "esp_http_client", "app_update" ],
             "priv_reqs": [ "joltwallet__littlefs" ],
             "managed_reqs": [],
             "managed_priv_reqs": [ "joltwallet__littlefs" ],
             "file": "C:/Work/Espressif_work/Web_Server/build/esp-idf/main/libmain.a",
             "sources": [ "C:/Work/Espressif_work/Web_Server/main/main.c" ],
-            "include_dirs": []
+            "include_dirs": [ "." ]
         },
         "mbedtls": {
             "alias": "idf::mbedtls",
@@ -2112,11 +2112,11 @@
             "prefix": "idf",
             "dir": "C:/Work/Espressif_work/Web_Server/main",
             "lib": "__idf_main",
-            "reqs": [ "esp_wifi", "esp_netif", "esp_http_server", "nvs_flash", "joltwallet__littlefs" ],
+            "reqs": [ "esp_wifi", "esp_netif", "esp_http_server", "nvs_flash", "joltwallet__littlefs", "esp_http_client", "app_update" ],
             "priv_reqs": [ "joltwallet__littlefs" ],
             "managed_reqs": [],
             "managed_priv_reqs": [ "joltwallet__littlefs" ],
-            "include_dirs": []
+            "include_dirs": [ "." ]
         },
         "joltwallet__littlefs": {
             "alias": "idf::joltwallet__littlefs",

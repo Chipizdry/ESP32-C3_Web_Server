@@ -15,7 +15,7 @@
 ########################
 
 //No help, variable specified on the command line.
-CCACHE_ENABLE:UNINITIALIZED=0
+CCACHE_ENABLE:UNINITIALIZED=1
 
 //Path to a program.
 CCACHE_FOUND:FILEPATH=G:/Espressif/tools/ccache/4.8/ccache-4.8-windows-x86_64/ccache.exe
@@ -117,8 +117,8 @@ CMAKE_EXE_LINKER_FLAGS_RELEASE:STRING=
 //Flags used by the linker during RELWITHDEBINFO builds.
 CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO:STRING=
 
-//No help, variable specified on the command line.
-CMAKE_EXPORT_COMPILE_COMMANDS:UNINITIALIZED=ON
+//Enable/Disable output of compile commands during generation.
+CMAKE_EXPORT_COMPILE_COMMANDS:BOOL=
 
 //Value Computed by CMake.
 CMAKE_FIND_PACKAGE_REDIRECTS_DIR:STATIC=C:/Work/Espressif_work/Web_Server/build/CMakeFiles/pkgRedirects
@@ -160,7 +160,7 @@ CMAKE_INSTALL_MANDIR:PATH=
 CMAKE_INSTALL_OLDINCLUDEDIR:PATH=/usr/include
 
 //Install path prefix, prepended onto install directories.
-CMAKE_INSTALL_PREFIX:PATH=C:/Program Files (x86)/app-template
+CMAKE_INSTALL_PREFIX:PATH=C:/Program Files (x86)/Web_Server
 
 //Run-time variable data (LOCALSTATEDIR/run)
 CMAKE_INSTALL_RUNSTATEDIR:PATH=
@@ -216,7 +216,7 @@ CMAKE_PROJECT_DESCRIPTION:STATIC=
 CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=app-template
+CMAKE_PROJECT_NAME:STATIC=Web_Server
 
 //Value Computed by CMake
 CMAKE_PROJECT_VERSION:STATIC=3.6.0
@@ -314,7 +314,7 @@ ESP_PLATFORM:UNINITIALIZED=1
 GEN_FILES:BOOL=
 
 //Git command line client
-GIT_EXECUTABLE:FILEPATH=C:/Program Files/Git/cmd/git.exe
+GIT_EXECUTABLE:FILEPATH=G:/Espressif/tools/idf-git/2.44.0/cmd/git.exe
 
 //IDF Build Target
 IDF_TARGET:STRING=esp32c3
@@ -355,9 +355,6 @@ PYTHON:UNINITIALIZED=G:\Espressif\python_env\idf5.2_py3.11_env\Scripts\python.ex
 //No help, variable specified on the command line.
 PYTHON_DEPS_CHECKED:UNINITIALIZED=1
 
-//No help, variable specified on the command line.
-SDKCONFIG:UNINITIALIZED=sdkconfig
-
 //Allow unsafe builds. These builds ARE NOT SECURE.
 UNSAFE_BUILD:BOOL=OFF
 
@@ -368,13 +365,13 @@ USE_SHARED_MBEDTLS_LIBRARY:BOOL=OFF
 USE_STATIC_MBEDTLS_LIBRARY:BOOL=ON
 
 //Value Computed by CMake
-app-template_BINARY_DIR:STATIC=C:/Work/Espressif_work/Web_Server/build
+Web_Server_BINARY_DIR:STATIC=C:/Work/Espressif_work/Web_Server/build
 
 //Value Computed by CMake
-app-template_IS_TOP_LEVEL:STATIC=ON
+Web_Server_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
-app-template_SOURCE_DIR:STATIC=C:/Work/Espressif_work/Web_Server
+Web_Server_SOURCE_DIR:STATIC=C:/Work/Espressif_work/Web_Server
 
 //Value Computed by CMake
 esp-idf_BINARY_DIR:STATIC=C:/Work/Espressif_work/Web_Server/build/esp-idf
@@ -482,6 +479,8 @@ CMAKE_EXE_LINKER_FLAGS_MINSIZEREL-ADVANCED:INTERNAL=1
 CMAKE_EXE_LINKER_FLAGS_RELEASE-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO
 CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: CMAKE_EXPORT_COMPILE_COMMANDS
+CMAKE_EXPORT_COMPILE_COMMANDS-ADVANCED:INTERNAL=1
 //Name of external makefile project generator.
 CMAKE_EXTRA_GENERATOR:INTERNAL=
 //Name of generator.
@@ -590,7 +589,7 @@ CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL=1
 //Test C_COMPILER_SUPPORTS_WFORMAT_SIGNEDNESS
 C_COMPILER_SUPPORTS_WFORMAT_SIGNEDNESS:INTERNAL=1
 //Details about finding Git
-FIND_PACKAGE_MESSAGE_DETAILS_Git:INTERNAL=[C:/Program Files/Git/cmd/git.exe][v2.45.1.windows.1()]
+FIND_PACKAGE_MESSAGE_DETAILS_Git:INTERNAL=[G:/Espressif/tools/idf-git/2.44.0/cmd/git.exe][v2.44.0.windows.1()]
 //Details about finding Python3
 FIND_PACKAGE_MESSAGE_DETAILS_Python3:INTERNAL=[G:/Espressif/python_env/idf5.2_py3.11_env/Scripts/python.exe][cfound components: Interpreter ][v3.11.2()]
 //Details about finding Threads
@@ -608,7 +607,7 @@ HAVE_TIME_T_SIZE:INTERNAL=TRUE
 //CHECK_TYPE_SIZE: sizeof(time_t)
 TIME_T_SIZE:INTERNAL=8
 //CMAKE_INSTALL_PREFIX during last run
-_GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=C:/Program Files (x86)/app-template
+_GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=C:/Program Files (x86)/Web_Server
 _Python3_EXECUTABLE:INTERNAL=G:/Espressif/python_env/idf5.2_py3.11_env/Scripts/python.exe
 //Python3 Properties
 _Python3_INTERPRETER_PROPERTIES:INTERNAL=Python;3;11;2;32;;;G:\Espressif\tools\idf-python\3.11.2\Lib;G:\Espressif\tools\idf-python\3.11.2\Lib;G:\Espressif\python_env\idf5.2_py3.11_env\Lib\site-packages;G:\Espressif\python_env\idf5.2_py3.11_env\Lib\site-packages

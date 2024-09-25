@@ -3,5 +3,5 @@
 cmake_minimum_required(VERSION 3.5)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(app-template)
+project(Web_Server)
 set(FLASH_TARGET esp32c3)

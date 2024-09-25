@@ -379,33 +379,46 @@
 
 
             <script>
-                function uploadFirmware() {
-                    const fileInput = document.getElementById('firmwareFile');
-                    const status = document.getElementById('status');
-                
-                    if (fileInput.files.length === 0) {
-                        status.innerHTML = "Please select a firmware file!";
-                        return;
-                    }
-                
-                    const formData = new FormData();
-                    formData.append("firmware", fileInput.files[0]);
-                
-                    // Отправляем POST запрос с файлом прошивки на сервер
-                    fetch('/ota', {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.text())
-                    .then(result => {
-                        status.innerHTML = "Firmware uploaded successfully!";
-                        console.log(result);
-                    })
-                    .catch(error => {
-                        status.innerHTML = "Error uploading firmware!";
-                        console.error('Error:', error);
-                    });
-                }
+                  function uploadFirmware() {
+        const fileInput = document.getElementById('firmwareFile');
+        const status = document.getElementById('status');
+
+        if (fileInput.files.length === 0) {
+            status.innerHTML = "Please select a firmware file!";
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const validExtensions = ['application/octet-stream', 'application/x-binary'];
+
+        if (!validExtensions.includes(file.type)) {
+            status.innerHTML = "Invalid firmware file type!";
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("firmware", file);
+
+        // Отправляем POST запрос с файлом прошивки на сервер
+        fetch('/ota', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.statusText);
+            }
+            return response.text();
+        })
+        .then(result => {
+            status.innerHTML = "Firmware uploaded successfully!";
+            console.log(result);
+        })
+        .catch(error => {
+            status.innerHTML = "Error uploading firmware!";
+            console.error('Error:', error);
+        });
+    }
                 </script>
 
    <script>

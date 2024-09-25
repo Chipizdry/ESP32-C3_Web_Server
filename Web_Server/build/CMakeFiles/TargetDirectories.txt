@@ -11,7 +11,7 @@ C:/Work/Espressif_work/Web_Server/build/CMakeFiles/monitor.dir
 C:/Work/Espressif_work/Web_Server/build/CMakeFiles/flash.dir
 C:/Work/Espressif_work/Web_Server/build/CMakeFiles/encrypted-flash.dir
 C:/Work/Espressif_work/Web_Server/build/CMakeFiles/_project_elf_src.dir
-C:/Work/Espressif_work/Web_Server/build/CMakeFiles/app-template.elf.dir
+C:/Work/Espressif_work/Web_Server/build/CMakeFiles/Web_Server.elf.dir
 C:/Work/Espressif_work/Web_Server/build/CMakeFiles/size.dir
 C:/Work/Espressif_work/Web_Server/build/CMakeFiles/size-files.dir
 C:/Work/Espressif_work/Web_Server/build/CMakeFiles/size-components.dir
@@ -191,6 +191,13 @@ C:/Work/Espressif_work/Web_Server/build/esp-idf/esp_partition/CMakeFiles/install
 C:/Work/Espressif_work/Web_Server/build/esp-idf/esp_partition/CMakeFiles/install/local.dir
 C:/Work/Espressif_work/Web_Server/build/esp-idf/esp_partition/CMakeFiles/install/strip.dir
 C:/Work/Espressif_work/Web_Server/build/esp-idf/app_update/CMakeFiles/__idf_app_update.dir
+C:/Work/Espressif_work/Web_Server/build/esp-idf/app_update/CMakeFiles/blank_ota_data.dir
+C:/Work/Espressif_work/Web_Server/build/esp-idf/app_update/CMakeFiles/read-otadata.dir
+C:/Work/Espressif_work/Web_Server/build/esp-idf/app_update/CMakeFiles/read_otadata.dir
+C:/Work/Espressif_work/Web_Server/build/esp-idf/app_update/CMakeFiles/erase-otadata.dir
+C:/Work/Espressif_work/Web_Server/build/esp-idf/app_update/CMakeFiles/erase_otadata.dir
+C:/Work/Espressif_work/Web_Server/build/esp-idf/app_update/CMakeFiles/otadata-flash.dir
+C:/Work/Espressif_work/Web_Server/build/esp-idf/app_update/CMakeFiles/encrypted-otadata-flash.dir
 C:/Work/Espressif_work/Web_Server/build/esp-idf/app_update/CMakeFiles/edit_cache.dir
 C:/Work/Espressif_work/Web_Server/build/esp-idf/app_update/CMakeFiles/rebuild_cache.dir
 C:/Work/Espressif_work/Web_Server/build/esp-idf/app_update/CMakeFiles/list_install_components.dir
