@@ -377,9 +377,8 @@
     </script>
 
 
-
-            <script>
-                  function uploadFirmware() {
+<script>
+    function uploadFirmware() {
         const fileInput = document.getElementById('firmwareFile');
         const status = document.getElementById('status');
 
@@ -388,9 +387,17 @@
             return;
         }
 
-        const file = fileInput.files[0];
-        const validExtensions = ['application/octet-stream', 'application/x-binary'];
+        const file = fileInput.files[0]; // Переносим объявление сюда
 
+        // Проверка расширения файла (если потребуется)
+        const allowedExtensions = ['bin'];
+        const fileExtension = file.name.split('.').pop();
+        if (!allowedExtensions.includes(fileExtension)) {
+            status.innerHTML = "Invalid firmware file extension!";
+            return;
+        }
+
+        const validExtensions = ['application/octet-stream', 'application/x-binary'];
         if (!validExtensions.includes(file.type)) {
             status.innerHTML = "Invalid firmware file type!";
             return;
@@ -398,11 +405,20 @@
 
         const formData = new FormData();
         formData.append("firmware", file);
+        console.log("File size:", file.size);
+        console.log('Uploading file:', file);
 
+        // Логирование заголовков запроса
+        const headers = {
+            'Content-Type': 'multipart/form-data; boundary=your_boundary'
+        };
+        console.log("Request Headers:", headers);
+        
         // Отправляем POST запрос с файлом прошивки на сервер
         fetch('/ota', {
             method: 'POST',
-            body: formData
+           // headers: headers, // Используем заголовки, которые мы залогировали
+            body: formData // Например, используйте FormData для передачи файла
         })
         .then(response => {
             if (!response.ok) {
@@ -419,7 +435,9 @@
             console.error('Error:', error);
         });
     }
-                </script>
+</script>
+
+
 
    <script>
             
