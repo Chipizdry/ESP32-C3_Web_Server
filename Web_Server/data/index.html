@@ -411,7 +411,10 @@
             console.log(`Sending chunk ${chunkCounter} (size: ${chunk.size} bytes)`);
             fetch('/ota', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                headers: {
+                'Content-Range': `bytes ${offset}-${offset + chunk.size - 1}/${totalSize}` // добавляем Content-Range
+            }
             })
             .then(response => {
                 if (!response.ok) {
