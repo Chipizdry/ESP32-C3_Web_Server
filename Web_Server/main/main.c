@@ -615,8 +615,108 @@ const char* get_method_string(httpd_method_t method) {
     }
 }
 
+esp_err_t ota_post_handler(httpd_req_t *req) {
+    char buffer[2048]; // Буфер для получения данных
+    int received = 0;  // Переменная для получения количества полученных байт
+    int total_received = 0;  // Общее количество полученных байт
+
+    // Для хранения полей формы
+   
+    int chunk_number = 0;  // Номер чанка как целое число
+    int total_size = 0;  // Общий размер как целое число
+    int total_len = req->content_len;  // Общая длина данных запроса
+
+    ESP_LOGI(TAG, "Request method: %s", get_method_string(req->method));
+    ESP_LOGI(TAG, "Request URI: %s", req->uri);
+    ESP_LOGI(TAG, "Chunk OTA size: %d bytes", total_len);
+
+ // Для хранения границы boundary и других частей
+    char boundary[128] = {0};
+    char file_name[256] = {0};
+    bool inside_file_data = false;  // Флаг для отслеживания начала данных файла
 
 
+// Получаем заголовок Content-Type, чтобы найти boundary
+    char content_type[128] = {0};
+    httpd_req_get_hdr_value_str(req, "Content-Type", content_type, sizeof(content_type));
+
+    // Находим boundary в заголовке Content-Type
+    char *boundary_pos = strstr(content_type, "boundary=");
+    if (!boundary_pos) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No boundary found");
+        return ESP_FAIL;
+    }
+    strncpy(boundary, boundary_pos + strlen("boundary="), sizeof(boundary) - 1);
+    ESP_LOGI(TAG, "Boundary: %s", boundary);
+
+    // Чтение и обработка тела запроса
+    while ((received = httpd_req_recv(req, buffer, sizeof(buffer) - 1)) > 0) {
+        buffer[received] = '\0';  // Добавляем завершающий нуль-символ в строку
+
+        // Печатаем текущий полученный буфер для отладки
+        ESP_LOGI(TAG, "Received chunk: %s", buffer);
+
+        // Проверка на начало новой части (начинается с boundary)
+        char *part_start = strstr(buffer, boundary);
+        if (part_start) {
+            ESP_LOGI(TAG, "Found boundary: %s", boundary);
+
+            // Ищем заголовок Content-Disposition
+            char *content_disp = strstr(part_start, "Content-Disposition");
+            if (content_disp) {
+                // Извлечение имени файла из Content-Disposition
+                sscanf(content_disp, "Content-Disposition: form-data; name=\"fileName\"; filename=\"%[^\"]\"", file_name);
+                ESP_LOGI(TAG, "File name: %s", file_name);
+
+                // Переходим к содержимому файла (начало данных после \r\n\r\n)
+                char *file_data_start = strstr(content_disp, "\r\n\r\n");
+                if (file_data_start) {
+                    file_data_start += 4;  // Пропускаем \r\n\r\n
+                    inside_file_data = true;
+                    ESP_LOGI(TAG, "File data starts here...");
+                }
+            }
+        }
+
+        // Если мы находимся внутри данных файла
+        if (inside_file_data) {
+            // Находим конец данных файла (если есть конец boundary)
+            char *boundary_end = strstr(buffer, boundary);
+            if (boundary_end) {
+                *boundary_end = '\0';  // Обрезаем данные файла до конца текущей части
+                ESP_LOGI(TAG, "File data (chunk): %s", buffer);
+                inside_file_data = false;  // Окончание текущей части данных
+            } else {
+                ESP_LOGI(TAG, "File data (chunk): %s", buffer);  // Печатаем данные файла
+            }
+            total_received += received;
+        }
+    }
+
+    if (received < 0) {
+        // Ошибка при получении данных
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Error receiving data");
+        return ESP_FAIL;
+    }
+
+    // Отправляем ответ, подтверждающий готовность принять следующую часть
+    httpd_resp_set_type(req, "text/plain");
+    char response[64];
+    snprintf(response, sizeof(response), "Chunk %d received, ready for next", chunk_number);
+    httpd_resp_send(req, response, strlen(response));
+
+    // Выводим общую информацию
+    printf("Total bytes received for chunk %d: %d\n", chunk_number, total_received);
+    if (total_received >= total_size) {
+        printf("Upload complete for file: %s\n", file_name);
+    }
+
+    return ESP_OK;
+}
+
+
+
+/*
 esp_err_t ota_post_handler(httpd_req_t *req) {
     esp_err_t err;
     char ota_write_data[2048]; // Буфер для входящих данных
@@ -731,7 +831,7 @@ esp_err_t ota_post_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-
+*/
 
 
 esp_err_t save_wifi_settings_handler(httpd_req_t *req) {

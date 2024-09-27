@@ -378,66 +378,70 @@
 
 
 <script>
+    const CHUNK_SIZE = 1024; // Размер одной части (2КБ)
+
     function uploadFirmware() {
         const fileInput = document.getElementById('firmwareFile');
         const status = document.getElementById('status');
 
         if (fileInput.files.length === 0) {
             status.innerHTML = "Please select a firmware file!";
+            console.log("No file selected.");
             return;
         }
 
-        const file = fileInput.files[0]; // Переносим объявление сюда
+        const file = fileInput.files[0];
+        const totalSize = file.size;
+        let offset = 0; // Начальный смещение файла
+        let chunkCounter = 1; // Счетчик частей
 
-        // Проверка расширения файла (если потребуется)
-        const allowedExtensions = ['bin'];
-        const fileExtension = file.name.split('.').pop();
-        if (!allowedExtensions.includes(fileExtension)) {
-            status.innerHTML = "Invalid firmware file extension!";
-            return;
+        status.innerHTML = "Uploading firmware...";
+        console.log(`Starting upload: ${file.name}, total size: ${totalSize} bytes`);
+
+        // Функция отправки порции данных
+        function sendNextChunk() {
+            const chunk = file.slice(offset, offset + CHUNK_SIZE);
+
+            const formData = new FormData();
+            formData.append('chunk', chunk); // Добавляем часть файла в FormData
+            formData.append('chunkNumber', chunkCounter); // Добавляем номер части
+            formData.append('totalSize', totalSize); // Добавляем общий размер файла
+            formData.append('fileName', file.name); // Имя файла
+
+            console.log(`Sending chunk ${chunkCounter} (size: ${chunk.size} bytes)`);
+            fetch('/ota', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.text();
+            })
+            .then(result => {
+                console.log(`Chunk ${chunkCounter} uploaded successfully, received server response: ${result}`);
+                offset += CHUNK_SIZE;
+                chunkCounter++;
+                status.innerHTML = `Uploaded ${Math.min(offset, totalSize)} of ${totalSize} bytes`;
+
+                if (offset < totalSize) {
+                    console.log(`Continuing upload: ${offset} of ${totalSize} bytes uploaded`);
+                    sendNextChunk(); // Отправляем следующую часть только после получения ответа
+                } else {
+                    status.innerHTML = "Firmware upload completed successfully!";
+                    console.log("Upload completed successfully!");
+                }
+            })
+            .catch(error => {
+                status.innerHTML = "Error uploading firmware!";
+                console.error('Error:', error);
+            });
         }
 
-        const validExtensions = ['application/octet-stream', 'application/x-binary'];
-        if (!validExtensions.includes(file.type)) {
-            status.innerHTML = "Invalid firmware file type!";
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append("firmware", file);
-        console.log("File size:", file.size);
-        console.log('Uploading file:', file);
-
-        // Логирование заголовков запроса
-        const headers = {
-            'Content-Type': 'multipart/form-data; boundary=your_boundary'
-        };
-        console.log("Request Headers:", headers);
-        
-        // Отправляем POST запрос с файлом прошивки на сервер
-        fetch('/ota', {
-            method: 'POST',
-           // headers: headers, // Используем заголовки, которые мы залогировали
-            body: formData // Например, используйте FormData для передачи файла
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok: ' + response.statusText);
-            }
-            return response.text();
-        })
-        .then(result => {
-            status.innerHTML = "Firmware uploaded successfully!";
-            console.log(result);
-        })
-        .catch(error => {
-            status.innerHTML = "Error uploading firmware!";
-            console.error('Error:', error);
-        });
+        sendNextChunk(); // Начинаем отправку частей
     }
 </script>
-
-
 
    <script>
             
