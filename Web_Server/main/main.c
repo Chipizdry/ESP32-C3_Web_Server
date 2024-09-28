@@ -44,7 +44,7 @@ static bool netif_initialized = false;
 static bool event_loop_created = false;
 static bool filesystem_mounted = false;
 
-
+ bool ota_started = false;
 // Структура для хранения всех настроек
 typedef struct {
     float max_current;  // Максимальный ток
@@ -580,11 +580,11 @@ void init_wifi_from_nvs() {
 
         wifi_config_t wifi_config = {
             .sta = {
-                .ssid = "Medical",
-                .password = "0445026833"
+             //   .ssid = "Medical",
+              //  .password = "0445026833"
                 
-             //    .ssid = "TP-Link_FA4F",
-             //  .password = "19481555"
+                 .ssid = "TP-Link_FA4F",
+               .password = "19481555"
             },
         };
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
@@ -601,7 +601,62 @@ void init_wifi_from_nvs() {
         esp_wifi_start();  // Start the STA mode
     }
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+esp_ota_handle_t ota_handle = 0;
+const esp_partition_t *update_partition = NULL;
+
+esp_err_t start_ota() {
+    update_partition = esp_ota_get_next_update_partition(NULL);
+    if (update_partition == NULL) {
+        ESP_LOGE(TAG, "Failed to find OTA partition");
+        return ESP_FAIL;
+    }
+
+    // Начало OTA процесса
+    esp_err_t err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &ota_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_ota_begin failed (%s)", esp_err_to_name(err));
+        return err;
+    }
+
+    ESP_LOGI(TAG, "OTA begin successful");
+    return ESP_OK;
+}
+
+void write_ota_chunk(const char *data, size_t len) {
+    if (ota_handle == 0) {
+        ESP_LOGE(TAG, "OTA handle is invalid. Did you call start_ota?");
+        return;
+    }
+
+    // Пишем полученный чанк данных в OTA
+    esp_err_t err = esp_ota_write(ota_handle, (const void *)data, len);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error: esp_ota_write failed (%s)", esp_err_to_name(err));
+    } else {
+        ESP_LOGI(TAG, "OTA write chunk successful, chunk size: %d", len);
+    }
+}
+
+void end_ota() {
+    // Завершаем OTA
+    esp_err_t err = esp_ota_end(ota_handle);
+    if (err == ESP_OK) {
+        // Устанавливаем новый раздел как активный
+        err = esp_ota_set_boot_partition(update_partition);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "OTA update successful! Restarting...");
+            esp_restart();
+        } else {
+            ESP_LOGE(TAG, "esp_ota_set_boot_partition failed (%s)", esp_err_to_name(err));
+        }
+    } else {
+        ESP_LOGE(TAG, "esp_ota_end failed (%s)", esp_err_to_name(err));
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Функция для получения строкового представления метода
 const char* get_method_string(httpd_method_t method) {
@@ -616,113 +671,108 @@ const char* get_method_string(httpd_method_t method) {
 }
 
 esp_err_t ota_post_handler(httpd_req_t *req) {
-    char buffer[2048]; // Буфер для получения данных
-    int received = 0;  // Переменная для получения количества полученных байт
+    char buffer[3072]; // Буфер для получения данных
+    int received = 0;  // Количество полученных байт
     int total_received = 0;  // Общее количество полученных байт
-
-    // Для хранения полей формы
-    char file_name[256] = {0};  // Имя файла
-    int chunk_number = 0;  // Номер чанка как целое число
-    int total_size = 0;  // Общий размер как целое число
-    int total_len = req->content_len;  // Общая длина данных запроса
+    char content_type[256] = {0};
+    char *boundary = NULL;
 
     ESP_LOGI(TAG, "Request method: %s", get_method_string(req->method));
     ESP_LOGI(TAG, "Request URI: %s", req->uri);
-    ESP_LOGI(TAG, "Chunk OTA size: %d bytes", total_len);
+    ESP_LOGI(TAG, "Content Length: %d", req->content_len);
 
-   // Получаем заголовок Content-Type, чтобы найти boundary
-    char content_type[128] = {0};
+    // Получаем заголовок Content-Type
     httpd_req_get_hdr_value_str(req, "Content-Type", content_type, sizeof(content_type));
+    ESP_LOGI(TAG, "Received Content-Type: %s", content_type);
 
     // Находим boundary в заголовке Content-Type
-    char *boundary = strstr(content_type, "boundary=");
+    boundary = strstr(content_type, "boundary=");
     if (!boundary) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No boundary found");
         return ESP_FAIL;
     }
     boundary += strlen("boundary="); // Пропускаем "boundary="
+    ESP_LOGI(TAG, "Boundary: %s", boundary);
 
-    // Читаем тело запроса
-    while ((received = httpd_req_recv(req, buffer, sizeof(buffer) - 1)) > 0) {
-        buffer[received] = '\0';  // Добавляем завершающий символ строки
-
-        // Печатаем полный полученный чанк для отладки
-        ESP_LOGI(TAG, "Received chunk: %s", buffer);
-
-        // Ищем первую границу
-        char *part_start = strstr(buffer, boundary);
-        if (part_start) {
-            part_start += strlen(boundary); // Пропускаем границу
-
-            // Ищем заголовок Content-Disposition
-            char *content_disp = strstr(part_start, "Content-Disposition");
-            if (content_disp) {
-                // Извлекаем имя файла
-                sscanf(content_disp, "Content-Disposition: form-data; name=\"fileName\"; filename=\"%[^\"]\"", file_name);
-                ESP_LOGI(TAG, "File name: %s", file_name);
-
-                // Извлекаем номер чанка
-                sscanf(part_start, "Content-Disposition: form-data; name=\"chunkNumber\"\r\n\r\n%d", &chunk_number);
-                ESP_LOGI(TAG, "Chunk number: %d", chunk_number);
-
-                // Извлекаем общий размер файла
-                sscanf(part_start, "Content-Disposition: form-data; name=\"totalSize\"\r\n\r\n%d", &total_size);
-                ESP_LOGI(TAG, "Total size: %d", total_size);
-
-                // Переходим к содержимому файла
-                char *file_data_start = strstr(part_start, "\r\n\r\n");
-                if (file_data_start) {
-                    file_data_start += 4;  // Пропускаем \r\n\r\n
-
-                    // Вычисляем размер данных
-                    int file_data_size = received - (file_data_start - buffer);
-
-                    // Логируем данные файла
-                    ESP_LOGI(TAG, "File data starts here...");
-                    ESP_LOG_BUFFER_HEX(TAG, file_data_start, file_data_size);
-
-                    // Здесь можно сохранить данные файла или продолжить обработку
-                    total_received += file_data_size;
-
-                    // Отправляем ответ, подтверждающий готовность принять следующую часть
-                    httpd_resp_set_type(req, "text/plain");
-                    char response[64];
-                    snprintf(response, sizeof(response), "Chunk %d received, ready for next", chunk_number);
-                    httpd_resp_send(req, response, strlen(response));
-                } else {
-                    ESP_LOGI(TAG, "No file data found after headers.");
-                }
-            } else {
-                ESP_LOGI(TAG, "No Content-Disposition header found.");
-            }
-        } else {
-            ESP_LOGI(TAG, "No boundary found in current chunk, continuing to read...");
-        }
-    }
-
-
-    if (received < 0) {
-        // Ошибка при получении данных
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Error receiving data");
+    // Инициализация OTA
+    if (start_ota() != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start OTA");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA start failed");
         return ESP_FAIL;
     }
 
-    // Отправляем ответ, подтверждающий готовность принять следующую часть
-    httpd_resp_set_type(req, "text/plain");
-    char response[64];
-    snprintf(response, sizeof(response), "Chunk %d received, ready for next", chunk_number);
-    httpd_resp_send(req, response, strlen(response));
+    // Читаем тело запроса и обрабатываем чанки
+    while ((received = httpd_req_recv(req, buffer, sizeof(buffer) - 1)) > 0) {
+        buffer[received] = '\0';  // Завершаем строку для безопасности
+        ESP_LOGE(TAG, "Full received DATA:");
+        ESP_LOG_BUFFER_HEX(TAG, buffer, received);  // Лог для отладки
 
-    // Выводим общую информацию
-    printf("Total bytes received for chunk %d: %d\n", chunk_number, total_received);
-    if (total_received >= total_size) {
-        printf("Upload complete for file: %s\n", file_name);
+        // Обработка данных чанков
+        char *data_start = buffer;
+        char *boundary_pos = strstr(data_start, boundary);
+        
+        // Пока находим границы частей (boundary)
+        while (boundary_pos) {
+            // Пропускаем boundary
+            data_start = boundary_pos + strlen(boundary);
+            
+            // Ищем заголовок Content-Disposition
+            char *content_disp = strstr(data_start, "Content-Disposition");
+            if (!content_disp) {
+                break;  // Если не найден Content-Disposition, завершаем
+            }
+
+            // Переходим к данным после заголовков (после \r\n\r\n)
+            data_start = strstr(content_disp, "\r\n\r\n");
+            if (!data_start) {
+                break;  // Если не найдено окончание заголовков
+            }
+            data_start += 4;  // Пропускаем \r\n\r\n
+
+            // Найдем конец данных текущего чанка
+            boundary_pos = strstr(data_start, boundary);
+            int chunk_size = (boundary_pos) ? (boundary_pos - data_start) : (received - (data_start - buffer));
+            
+            // Если есть данные, обрабатываем их (передаем в OTA)
+            if (chunk_size > 0) {
+                ESP_LOGI(TAG, "File data starts here... Size: %d", chunk_size);
+                ESP_LOG_BUFFER_HEX(TAG, data_start, chunk_size);
+
+                // Записываем данные в OTA
+                write_ota_chunk(data_start, chunk_size);
+                total_received += chunk_size;
+            }
+        }
     }
 
+    // Завершение OTA
+    if (total_received > 0) {
+        end_ota();
+    }
+
+    // Логируем общий объем полученных данных
+    ESP_LOGI(TAG, "Upload complete: %d bytes received", total_received);
+
+    // Отправляем ответ
+    httpd_resp_set_type(req, "text/plain");
+    httpd_resp_send(req, "OTA update completed", HTTPD_RESP_USE_STRLEN);
+    
     return ESP_OK;
 }
 
+/*   // Вычисляем размер данных
+                int file_data_size = received - (data_start - buffer);
+                ESP_LOGI(TAG, "File data starts here...");
+                ESP_LOG_BUFFER_HEX(TAG, data_start, file_data_size);
 
+                // Сохраняем данные файла или продолжаем обработку
+                total_received += file_data_size;
+
+                // Отправляем ответ, подтверждающий готовность принять следующую часть
+                httpd_resp_set_type(req, "text/plain");
+                char response[64];
+                snprintf(response, sizeof(response), "Chunk %d received, ready for next", chunk_number);
+                httpd_resp_send(req, response, strlen(response));*/
 
 /*
 esp_err_t ota_post_handler(httpd_req_t *req) {

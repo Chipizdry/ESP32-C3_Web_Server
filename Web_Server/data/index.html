@@ -378,7 +378,7 @@
 
 
 <script>
-    const CHUNK_SIZE = 1024; // Размер одной части (2КБ)
+    const CHUNK_SIZE = 1024; // Размер одной части (1КБ)
 
     function uploadFirmware() {
         const fileInput = document.getElementById('firmwareFile');
@@ -397,24 +397,67 @@
 
         status.innerHTML = "Uploading firmware...";
         console.log(`Starting upload: ${file.name}, total size: ${totalSize} bytes`);
-
+       
         // Функция отправки порции данных
         function sendNextChunk() {
             const chunk = file.slice(offset, offset + CHUNK_SIZE);
 
             const formData = new FormData();
-            formData.append('chunk', chunk); // Добавляем часть файла в FormData
-            formData.append('chunkNumber', chunkCounter); // Добавляем номер части
-            formData.append('totalSize', totalSize); // Добавляем общий размер файла
+            
             formData.append('fileName', file.name); // Имя файла
+            formData.append('totalSize', totalSize); // Общий размер файла
+            formData.append('chunkNumber', chunkCounter); // Номер части
+            formData.append("chunk", chunk, file.name); // Добавление части файла
 
             console.log(`Sending chunk ${chunkCounter} (size: ${chunk.size} bytes)`);
+            console.log(`Chunk data:`, chunk);
+
+           // Преобразование данных перед chunk в HEX
+            let formDataString = `fileName=${file.name}&totalSize=${totalSize}&chunkNumber=${chunkCounter}`;
+            let hexStringBeforeChunk = '';
+            
+            for (let i = 0; i < formDataString.length; i++) {
+                hexStringBeforeChunk += formDataString.charCodeAt(i).toString(16).padStart(2, '0') + ' ';
+            }
+            
+            console.log(`Form data before chunk (hex): ${hexStringBeforeChunk}`);
+
+             // Преобразование чанка в хекс-строку
+             const reader = new FileReader();
+            reader.onload = function(event) {
+                const arrayBuffer = event.target.result;
+                const uint8Array = new Uint8Array(arrayBuffer);
+
+                let hexString = '';
+                uint8Array.forEach(byte => {
+                    hexString += byte.toString(16).padStart(2, '0') + ' ';
+                });
+
+                console.log(`Chunk data (hex): ${hexString}`);
+            };
+
+            reader.readAsArrayBuffer(chunk);
+              // Логируем FormData
+              console.log('Form Data:');
+            for (let [key, value] of formData.entries()) {
+                if (value instanceof File) {
+                    console.log(`${key}: File { name: '${value.name}', size: ${value.size}, type: '${value.type}' }`);
+                } else {
+                    console.log(`${key}: ${value}`);
+                }
+            }
+
+
+            // Заголовки
+            const headers = {
+                'Content-Range': `bytes ${offset}-${offset + chunk.size - 1}/${totalSize}` // добавляем Content-Range
+            };
+            console.log('Headers:', headers);
+
             fetch('/ota', {
                 method: 'POST',
                 body: formData,
-                headers: {
-                'Content-Range': `bytes ${offset}-${offset + chunk.size - 1}/${totalSize}` // добавляем Content-Range
-            }
+                headers: headers // Используем созданные заголовки
             })
             .then(response => {
                 if (!response.ok) {
