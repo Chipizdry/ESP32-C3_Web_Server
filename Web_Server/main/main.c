@@ -44,7 +44,10 @@ static bool netif_initialized = false;
 static bool event_loop_created = false;
 static bool filesystem_mounted = false;
 
- bool ota_started = false;
+esp_ota_handle_t ota_handle = 0;
+bool ota_started = false;
+size_t total_received = 0;
+
 // Структура для хранения всех настроек
 typedef struct {
     float max_current;  // Максимальный ток
@@ -603,7 +606,7 @@ void init_wifi_from_nvs() {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-esp_ota_handle_t ota_handle = 0;
+
 const esp_partition_t *update_partition = NULL;
 
 esp_err_t start_ota() {
@@ -676,6 +679,7 @@ esp_err_t ota_post_handler(httpd_req_t *req) {
     int total_received = 0;  // Общее количество полученных байт
     char content_type[256] = {0};
     char *boundary = NULL;
+    bool ota_started = false; // Флаг начала OTA
 
     ESP_LOGI(TAG, "Request method: %s", get_method_string(req->method));
     ESP_LOGI(TAG, "Request URI: %s", req->uri);
@@ -694,71 +698,84 @@ esp_err_t ota_post_handler(httpd_req_t *req) {
     boundary += strlen("boundary="); // Пропускаем "boundary="
     ESP_LOGI(TAG, "Boundary: %s", boundary);
 
-    // Инициализация OTA
-    if (start_ota() != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to start OTA");
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA start failed");
-        return ESP_FAIL;
-    }
-
     // Читаем тело запроса и обрабатываем чанки
     while ((received = httpd_req_recv(req, buffer, sizeof(buffer) - 1)) > 0) {
         buffer[received] = '\0';  // Завершаем строку для безопасности
-        ESP_LOGE(TAG, "Full received DATA:");
+        ESP_LOGI(TAG, "Full received DATA:");
         ESP_LOG_BUFFER_HEX(TAG, buffer, received);  // Лог для отладки
-
-        // Обработка данных чанков
+        ESP_LOGI(TAG, "Received chunk: %d bytes", received);
+        
         char *data_start = buffer;
         char *boundary_pos = strstr(data_start, boundary);
         
-        // Пока находим границы частей (boundary)
+        // Обрабатываем части, пока находим boundary
         while (boundary_pos) {
-            // Пропускаем boundary
+            // Пропускаем boundary и ищем следующий блок данных
             data_start = boundary_pos + strlen(boundary);
             
             // Ищем заголовок Content-Disposition
             char *content_disp = strstr(data_start, "Content-Disposition");
+            ESP_LOGI(TAG, "Content-Disposition: %s", content_disp);
             if (!content_disp) {
-                break;  // Если не найден Content-Disposition, завершаем
+                break; // Если не найден Content-Disposition, завершаем
             }
 
-            // Переходим к данным после заголовков (после \r\n\r\n)
-            data_start = strstr(content_disp, "\r\n\r\n");
-            if (!data_start) {
-                break;  // Если не найдено окончание заголовков
-            }
-            data_start += 4;  // Пропускаем \r\n\r\n
+            // Проверяем, если это часть с бинарными данными (chunk)
+            if (strstr(content_disp, "name=\"chunk\"")) {
+                ESP_LOGI(TAG, "Found chunk part");
 
-            // Найдем конец данных текущего чанка
-            boundary_pos = strstr(data_start, boundary);
-            int chunk_size = (boundary_pos) ? (boundary_pos - data_start) : (received - (data_start - buffer));
-            
-            // Если есть данные, обрабатываем их (передаем в OTA)
-            if (chunk_size > 0) {
-                ESP_LOGI(TAG, "File data starts here... Size: %d", chunk_size);
-                ESP_LOG_BUFFER_HEX(TAG, data_start, chunk_size);
+                // Пропускаем заголовки до конца (ищем \r\n\r\n)
+                data_start = strstr(content_disp, "\r\n\r\n");
+                if (!data_start) {
+                    break; // Не найдено окончание заголовков
+                }
+                data_start += 4; // Пропускаем \r\n\r\n
 
-                // Записываем данные в OTA
-                write_ota_chunk(data_start, chunk_size);
-                total_received += chunk_size;
+                // Начало OTA, если еще не начато
+                if (!ota_started) {
+                    if (start_ota() != ESP_OK) {
+                        ESP_LOGE(TAG, "Failed to start OTA");
+                        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA start failed");
+                        return ESP_FAIL;
+                    }
+                    ota_started = true;
+                }
+
+                // Находим конец данных текущей части перед следующим boundary
+                boundary_pos = strstr(data_start, boundary);
+                int chunk_size = (boundary_pos) ? (boundary_pos - data_start) : (received - (data_start - buffer));
+                
+                // Если есть данные, передаем их в OTA
+                if (chunk_size > 0) {
+                    ESP_LOGI(TAG, "File data: %d bytes", chunk_size);
+                    ESP_LOGI(TAG, "OTA DATA:");
+                    ESP_LOG_BUFFER_HEX(TAG, data_start, chunk_size);  // Лог для отладки
+                    write_ota_chunk(data_start, chunk_size);  // Запись чанка в OTA
+                    total_received += chunk_size;
+                }
             }
+
+            // Обновляем позицию для следующей части
+            data_start = boundary_pos;
         }
     }
 
     // Завершение OTA
-    if (total_received > 0) {
+    if (total_received > 0 && ota_started) {
+        ESP_LOGI(TAG, "OTA update: %d bytes", total_received);
         end_ota();
+    } else {
+        ESP_LOGE(TAG, "No valid data received");
+        return ESP_FAIL;
     }
 
-    // Логируем общий объем полученных данных
-    ESP_LOGI(TAG, "Upload complete: %d bytes received", total_received);
-
-    // Отправляем ответ
+    // Отправляем успешный ответ
     httpd_resp_set_type(req, "text/plain");
     httpd_resp_send(req, "OTA update completed", HTTPD_RESP_USE_STRLEN);
     
     return ESP_OK;
 }
+
 
 /*   // Вычисляем размер данных
                 int file_data_size = received - (data_start - buffer);

@@ -407,37 +407,14 @@
             formData.append('fileName', file.name); // Имя файла
             formData.append('totalSize', totalSize); // Общий размер файла
             formData.append('chunkNumber', chunkCounter); // Номер части
-            formData.append("chunk", chunk, file.name); // Добавление части файла
+            formData.append("chunk", chunk); // Добавление части файла
 
             console.log(`Sending chunk ${chunkCounter} (size: ${chunk.size} bytes)`);
             console.log(`Chunk data:`, chunk);
 
-           // Преобразование данных перед chunk в HEX
-            let formDataString = `fileName=${file.name}&totalSize=${totalSize}&chunkNumber=${chunkCounter}`;
-            let hexStringBeforeChunk = '';
+           
+           
             
-            for (let i = 0; i < formDataString.length; i++) {
-                hexStringBeforeChunk += formDataString.charCodeAt(i).toString(16).padStart(2, '0') + ' ';
-            }
-            
-            console.log(`Form data before chunk (hex): ${hexStringBeforeChunk}`);
-
-             // Преобразование чанка в хекс-строку
-             const reader = new FileReader();
-            reader.onload = function(event) {
-                const arrayBuffer = event.target.result;
-                const uint8Array = new Uint8Array(arrayBuffer);
-
-                let hexString = '';
-                uint8Array.forEach(byte => {
-                    hexString += byte.toString(16).padStart(2, '0') + ' ';
-                });
-
-                console.log(`Chunk data (hex): ${hexString}`);
-            };
-
-            reader.readAsArrayBuffer(chunk);
-              // Логируем FormData
               console.log('Form Data:');
             for (let [key, value] of formData.entries()) {
                 if (value instanceof File) {
