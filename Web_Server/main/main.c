@@ -11,6 +11,7 @@
 #include <esp_wifi.h>
 #include <esp_http_server.h>
 #include <nvs_flash.h>
+#include "esp_partition.h"
 #include "esp_littlefs.h"
 #include "dirent.h"
 #include "esp_err.h"
@@ -48,6 +49,8 @@ static int total_size=0;
 esp_ota_handle_t ota_handle = 0;
 static bool ota_started = false;
 static int total_received = 0;  // Общее количество полученных байт
+
+ 
 // Структура для хранения всех настроек
 typedef struct {
     float max_current;  // Максимальный ток
@@ -66,7 +69,7 @@ device_settings_t default_settings = {
     .wifi_password = "0445026833"
 };
 
-
+	
 void init_nvs() {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -681,8 +684,7 @@ esp_err_t ota_post_handler(httpd_req_t *req) {
     char *boundary = NULL;
    
    	 static esp_ota_handle_t ota_handle=0; // Делаем её static или глобальной
- // Инициализация OTA
- 	 
+
     esp_err_t ret;
     if(ota_started==false){
 	
@@ -707,11 +709,13 @@ esp_err_t ota_post_handler(httpd_req_t *req) {
       }
     }
     
-    
+     const esp_partition_t *running_partition = esp_ota_get_running_partition();
+  
+
     ESP_LOGI(TAG, "Request method: %s", get_method_string(req->method));
     ESP_LOGI(TAG, "Request URI: %s", req->uri);
     ESP_LOGI(TAG, "Content Length: %d", req->content_len);
-    
+    ESP_LOGI(TAG, "Running partition: %s", running_partition->label);
     // Читаем данные из запроса
 httpd_req_get_hdr_value_str(req, "Content-Type", content_type, sizeof(content_type));
 
@@ -834,9 +838,7 @@ while (boundary_pos) {
     memset(buffer, 0, sizeof(buffer));
 }
    
-    if (received == 0) {
-		
-		
+    if (received == 0) {	
     // Обработка завершена, данные полностью переданы
     httpd_resp_set_type(req, "text/plain");
     httpd_resp_send(req, "OTA update completed", HTTPD_RESP_USE_STRLEN);
@@ -846,9 +848,31 @@ while (boundary_pos) {
        esp_err_t end_err = esp_ota_end(ota_handle);
     if (end_err != ESP_OK) {
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA end failed");
+        ESP_LOGI(TAG, "OTA Update ERROR.....");
     } else {
         httpd_resp_send(req, "OTA Update Success", HTTPD_RESP_USE_STRLEN);
-          esp_restart();
+          ESP_LOGI(TAG, "OTA Update Success.Now rebooting.....");
+  // Определяем следующий раздел для загрузки
+    const esp_partition_t *next_partition = (running_partition->subtype == ESP_PARTITION_SUBTYPE_APP_OTA_0) ?
+                                            esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, NULL) :
+                                            esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, NULL);
+
+    if (next_partition != NULL) {
+        ESP_LOGI(TAG, "Next partition: %s", next_partition->label);
+
+        // Устанавливаем новый раздел для загрузки при следующем перезапуске
+        esp_err_t err = esp_ota_set_boot_partition(next_partition);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "Set next partition as boot");
+        } else {
+            ESP_LOGE(TAG, "Failed to set boot partition: %s", esp_err_to_name(err));
+        }
+
+        // Перезагрузка для загрузки нового приложения
+        esp_restart();
+    } else {
+        ESP_LOGE(TAG, "Next partition not found!");
+    }  esp_restart();
     }}
     return ESP_OK;
     
@@ -1190,5 +1214,6 @@ void app_main(void) {
     save_settings_to_nvs(&current_settings);
     // Запуск веб-сервера
     start_webserver();
+   
 }
 
