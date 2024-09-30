@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -18,6 +19,8 @@
 #include "esp_mac.h"
 #include "esp_mac.h"
 #include "nvs.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <time.h>
 #include "lwip/ip4_addr.h"
 
@@ -49,7 +52,7 @@ static int total_size=0;
 esp_ota_handle_t ota_handle = 0;
 static bool ota_started = false;
 static int total_received = 0;  // Общее количество полученных байт
-
+static int32_t rssi=0;
  
 // Структура для хранения всех настроек
 typedef struct {
@@ -138,6 +141,21 @@ void setup_random() {
 
 void list_files(const char *base_path);
 static const char *TAG = "web_server";
+
+void wifi_signal_strength_task(void *pvParameters) {
+    while (true) {
+        wifi_ap_record_t ap_info;
+        if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
+            // Получаем уровень сигнала в dBm
+           rssi = ap_info.rssi;
+            ESP_LOGI(TAG, "Current WiFi Signal Strength: %ld dBm",(long int)rssi);
+        } else {
+            ESP_LOGE(TAG, "Failed to get AP info");
+        }
+        // Ждем 5 секунд перед следующим измерением
+        vTaskDelay(pdMS_TO_TICKS(3000));
+    }
+}
 
 void mount_littlefs() {
     esp_vfs_littlefs_conf_t conf = {
@@ -978,9 +996,9 @@ esp_err_t data_get_handler(httpd_req_t *req) {
     
     ESP_LOGI("WEB_SERVER", "Request received");
      // Формирование JSON-ответа
-    char response[200];
+    char response[264];
     snprintf(response, sizeof(response),
-             "{\"voltage\": %.2f, \"speed\": %d, \"temperature\": %.1f, \"current\": %.2f}",voltage, speed, temperature, current);
+             "{\"voltage\": %.2f, \"speed\": %d, \"temperature\": %.1f, \"current\": %.2f,\"Signal\":%ld}",voltage, speed, temperature, current,(long int)rssi);
 
     // Отправка ответа клиенту
     httpd_resp_set_type(req, "application/json");
@@ -1214,6 +1232,7 @@ void app_main(void) {
     save_settings_to_nvs(&current_settings);
     // Запуск веб-сервера
     start_webserver();
+       xTaskCreate(wifi_signal_strength_task, "wifi_signal_strength_task", 2048, NULL, 5, NULL);
    
 }
 

@@ -15,7 +15,7 @@
     
         <div class="connection-status">
             <span id="connectionIndicator" class="status-indicator"></span>
-            Соединение с сервером
+            Соединение с сервером  <p>Сигнал, dBm.: <span id="Signal">0</span></p>
         </div>
                 <!-- Модальные окна -->
                 <div id="batteryModal" class="modal">
@@ -286,6 +286,7 @@
     <br><br><br><br>
     <p>Напряжение питания, В: <span id="voltage">0</span></p>
     <p>Скорость, Об.мин.: <span id="speed">0</span></p>
+
     
     <!-- Ползунок для установки максимального тока -->
     <label for="maxCurrentRange">Максимальный ток, А: <span id="maxCurrentValue">1</span></label>
@@ -728,6 +729,7 @@ function updateData() {
                     document.getElementById("speed").innerText = data.speed;
                     document.getElementById("temperature").innerText = data.temperature;
                     document.getElementById("current").innerText = data.current;
+                    document.getElementById("Signal").innerText = data.Signal;
 
                     // Обновляем данные графика
                     updateChart(data.speed);
