@@ -11,7 +11,6 @@
 #include <esp_wifi.h>
 #include <esp_http_server.h>
 #include <nvs_flash.h>
-//#include "esp_partition.h"
 #include "esp_littlefs.h"
 #include "dirent.h"
 #include "esp_err.h"
@@ -32,9 +31,10 @@
 #define AP_NETMASK "255.255.255.0"
 #define STORAGE_NAMESPACE "storage"
 
-#define BOUNDARY_PREFIX "--"
+
 #define BOUNDARY_SUFFIX "\r\n"
 
+#define BOUNDARY_PREFIX "------WebKitFormBoundary"
 
 httpd_handle_t server_handle = NULL;
 
@@ -44,10 +44,10 @@ static bool netif_initialized = false;
 static bool event_loop_created = false;
 static bool filesystem_mounted = false;
 
+static int total_size=0;
 esp_ota_handle_t ota_handle = 0;
-bool ota_started = false;
-size_t total_received = 0;
-
+static bool ota_started = false;
+static int total_received = 0;  // Общее количество полученных байт
 // Структура для хранения всех настроек
 typedef struct {
     float max_current;  // Максимальный ток
@@ -583,11 +583,11 @@ void init_wifi_from_nvs() {
 
         wifi_config_t wifi_config = {
             .sta = {
-             //   .ssid = "Medical",
-              //  .password = "0445026833"
+                .ssid = "Medical",
+                .password = "0445026833"
                 
-                 .ssid = "TP-Link_FA4F",
-               .password = "19481555"
+              //   .ssid = "TP-Link_FA4F",
+              // .password = "19481555"
             },
         };
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
@@ -672,241 +672,189 @@ const char* get_method_string(httpd_method_t method) {
         default: return "UNKNOWN";
     }
 }
-
+ 
 esp_err_t ota_post_handler(httpd_req_t *req) {
-    char buffer[3072]; // Буфер для получения данных
+    char buffer[4096]; // Буфер для получения данных
     int received = 0;  // Количество полученных байт
-    int total_received = 0;  // Общее количество полученных байт
+   
     char content_type[256] = {0};
     char *boundary = NULL;
-    bool ota_started = false; // Флаг начала OTA
+   
+   	 static esp_ota_handle_t ota_handle=0; // Делаем её static или глобальной
+ // Инициализация OTA
+ 	 
+    esp_err_t ret;
+    if(ota_started==false){
+	
 
+    const esp_partition_t *ota_partition = esp_ota_get_next_update_partition(NULL);
+   
+    ESP_LOGI(TAG, "Found OTA partition: %s, size: %lu", ota_partition->label, (long unsigned int)ota_partition->size);
+    if (ota_partition == NULL) {
+        ESP_LOGE(TAG, "OTA partition not found");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA partition not found");
+        return ESP_FAIL;
+    }
+
+    ret = esp_ota_begin(ota_partition, OTA_SIZE_UNKNOWN, &ota_handle);
+    ota_started=true;
+    if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "esp_ota_begin failed! err = %d", ret);
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "esp_ota_begin failed");
+    return ESP_FAIL;
+    } else {
+    ESP_LOGI(TAG, "esp_ota_begin succeeded, OTA handle initialized.");
+      }
+    }
+    
+    
     ESP_LOGI(TAG, "Request method: %s", get_method_string(req->method));
     ESP_LOGI(TAG, "Request URI: %s", req->uri);
     ESP_LOGI(TAG, "Content Length: %d", req->content_len);
+    
+    // Читаем данные из запроса
+httpd_req_get_hdr_value_str(req, "Content-Type", content_type, sizeof(content_type));
 
-    // Получаем заголовок Content-Type
-    httpd_req_get_hdr_value_str(req, "Content-Type", content_type, sizeof(content_type));
-    ESP_LOGI(TAG, "Received Content-Type: %s", content_type);
+// Получаем заголовок Content-Type  
+ESP_LOGI(TAG, "Received Content-Type: %s", content_type);
 
-    // Находим boundary в заголовке Content-Type
-    boundary = strstr(content_type, "boundary=");
-    if (!boundary) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No boundary found");
-        return ESP_FAIL;
+// Находим boundary в заголовке Content-Type
+boundary = strstr(content_type, "boundary=");
+if (!boundary) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No boundary found");
+    return ESP_FAIL;
+}
+boundary += strlen("boundary="); // Пропускаем "boundary="
+ESP_LOGI(TAG, "Boundary: %s", boundary);
+
+// Читаем тело запроса и обрабатываем чанки
+
+while ((received = httpd_req_recv(req, buffer, sizeof(buffer) - 1)) > 0) {
+    buffer[received] = '\0';  // Завершаем строку для безопасности
+ 
+    char *data_start = buffer;
+    char *boundary_pos = strstr(data_start, boundary);
+    
+   // Обрабатываем части, пока находим boundary
+while (boundary_pos) {
+    // Пропускаем boundary и ищем следующий блок данных
+    data_start = boundary_pos + strlen(boundary);
+    size_t total_length = received - (data_start - buffer);
+    // Ищем заголовок Content-Disposition
+ //   char *content_disp = strstr(data_start, "Content-Disposition");
+    char *content_disp = memmem(data_start, total_length, "Content-Disposition", strlen("Content-Disposition"));
+      ESP_LOGI(TAG, "Content-Disposition:%s",content_disp);  // Выводим данные как строку
+    if (!content_disp) {
+        ESP_LOGE(TAG, "Content-Disposition not found");
+        break; // Если не найден Content-Disposition, завершаем
     }
-    boundary += strlen("boundary="); // Пропускаем "boundary="
-    ESP_LOGI(TAG, "Boundary: %s", boundary);
-
-    // Читаем тело запроса и обрабатываем чанки
-    while ((received = httpd_req_recv(req, buffer, sizeof(buffer) - 1)) > 0) {
-        buffer[received] = '\0';  // Завершаем строку для безопасности
-        ESP_LOGI(TAG, "Full received DATA:");
-        ESP_LOG_BUFFER_HEX(TAG, buffer, received);  // Лог для отладки
-        ESP_LOGI(TAG, "Received chunk: %d bytes", received);
-        
-        char *data_start = buffer;
-        char *boundary_pos = strstr(data_start, boundary);
-        
-        // Обрабатываем части, пока находим boundary
-        while (boundary_pos) {
-            // Пропускаем boundary и ищем следующий блок данных
-            data_start = boundary_pos + strlen(boundary);
-            
-            // Ищем заголовок Content-Disposition
-            char *content_disp = strstr(data_start, "Content-Disposition");
-            ESP_LOGI(TAG, "Content-Disposition: %s", content_disp);
-            if (!content_disp) {
-                break; // Если не найден Content-Disposition, завершаем
-            }
-
-            // Проверяем, если это часть с бинарными данными (chunk)
-            if (strstr(content_disp, "name=\"chunk\"")) {
-                ESP_LOGI(TAG, "Found chunk part");
-
-                // Пропускаем заголовки до конца (ищем \r\n\r\n)
-                data_start = strstr(content_disp, "\r\n\r\n");
-                if (!data_start) {
-                    break; // Не найдено окончание заголовков
-                }
-                data_start += 4; // Пропускаем \r\n\r\n
-
-                // Начало OTA, если еще не начато
-                if (!ota_started) {
-                    if (start_ota() != ESP_OK) {
-                        ESP_LOGE(TAG, "Failed to start OTA");
-                        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA start failed");
-                        return ESP_FAIL;
-                    }
-                    ota_started = true;
-                }
-
-                // Находим конец данных текущей части перед следующим boundary
-                boundary_pos = strstr(data_start, boundary);
-                int chunk_size = (boundary_pos) ? (boundary_pos - data_start) : (received - (data_start - buffer));
-                
-                // Если есть данные, передаем их в OTA
-                if (chunk_size > 0) {
-                    ESP_LOGI(TAG, "File data: %d bytes", chunk_size);
-                    ESP_LOGI(TAG, "OTA DATA:");
-                    ESP_LOG_BUFFER_HEX(TAG, data_start, chunk_size);  // Лог для отладки
-                    write_ota_chunk(data_start, chunk_size);  // Запись чанка в OTA
-                    total_received += chunk_size;
-                }
-            }
-
-            // Обновляем позицию для следующей части
-            data_start = boundary_pos;
-        }
+		// Находим "name=\"totalSize\""
+		char *total_size_start = memmem(data_start, total_length, "name=\"totalSize\"", strlen("name=\"totalSize\""));
+		if (!total_size_start) {
+		    ESP_LOGE(TAG, "Total size field not found");
+		    break;
+		}
+		
+		// Смещаем указатель до конца строки "name=\"totalSize\""
+		total_size_start += strlen("name=\"totalSize\"");
+		
+		// Пропускаем любые пробелы, символы новой строки или символы перевода строки
+		while (*total_size_start == '\n' || *total_size_start == '\r' || *total_size_start == ' ') {
+		    total_size_start++;
+		}
+		
+		// Теперь total_size_start указывает на значение totalSize, считываем его
+		char total_size_str[16] = {0}; // Для хранения значения totalSize
+		int i = 0;
+		while (*total_size_start >= '0' && *total_size_start <= '9' && i < sizeof(total_size_str) - 1) {
+		    total_size_str[i++] = *total_size_start++;
+		}
+		total_size_str[i] = '\0'; // Завершаем строку
+		
+		// Преобразуем строку в целое число
+		total_size = atoi(total_size_str);
+		
+		ESP_LOGI(TAG, "Total Size: %d", total_size);
+     // Ищем конец заголовка Content-Disposition
+    char *content_end = memmem(content_disp, total_length - (content_disp - data_start), "application/octet-stream", strlen("application/octet-stream"));
+   
+    if (!content_end) {
+        ESP_LOGE(TAG, "End of Content-Disposition not found");
+        break;
     }
+    ESP_LOGI(TAG, "End of Content-Disposition found");
 
-    // Завершение OTA
-    if (total_received > 0 && ota_started) {
-        ESP_LOGI(TAG, "OTA update: %d bytes", total_received);
-        end_ota();
+    // Устанавливаем конец заголовка
+    content_end += strlen("application/octet-stream"); // Пропускаем "application/octet-stream"
+
+    // Находим начало данных (после заголовка)
+    char *data_start = content_end + 4; // Пропускаем следующий символ (который, скорее всего, '\n' или '\r')
+   
+    // Находим следующую границу (boundary) для определения конца данных
+    
+    size_t data_length = received - (data_start - buffer); // Остаток данных
+    char *boundary_position = (char*)memmem(data_start, total_length, boundary, strlen(boundary));
+
+     // Если граница найдена
+    if (boundary_position) {
+        data_length = boundary_position - data_start-4;  // Длина данных до границы
+        ESP_LOGI(TAG, "Binary data length: %d bytes", data_length);
+
+        // Выводим двоичные данные
+      //  ESP_LOG_BUFFER_HEX(TAG, data_start, data_length);  // Выводим двоичные данные в лог
+           // Проверка инициализации OTA
+            if (ota_handle == NULL) {
+            ESP_LOGE(TAG, "OTA handle is null, something went wrong with esp_ota_begin.");
+              return ESP_FAIL;}
+
+
+
+        // Записываем данные в OTA
+                ret = esp_ota_write(ota_handle, data_start, data_length);
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "esp_ota_write failed! err = %d", ret);
+                    esp_ota_end(ota_handle); // Завершаем OTA
+                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "esp_ota_write failed");
+                    return ESP_FAIL;
+                }
+        
+        
     } else {
-        ESP_LOGE(TAG, "No valid data received");
-        return ESP_FAIL;
+        ESP_LOGE(TAG, "Boundary not found");
+        break;  // Завершаем, если не найдено следующее boundary
     }
-
-    // Отправляем успешный ответ
+    
+    total_received +=data_length;
+     ESP_LOGI(TAG, "OTA update: %d bytes", total_received);
+     // Выход из внутреннего цикла при нахождении границы
+            break;
+   
+}
+// Очищаем буфер после обработки
+    memset(buffer, 0, sizeof(buffer));
+}
+   
+    if (received == 0) {
+		
+		
+    // Обработка завершена, данные полностью переданы
     httpd_resp_set_type(req, "text/plain");
     httpd_resp_send(req, "OTA update completed", HTTPD_RESP_USE_STRLEN);
+}
+     if( total_received==total_size){
+  // Обработка завершена, данные полностью переданы
+       esp_err_t end_err = esp_ota_end(ota_handle);
+    if (end_err != ESP_OK) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA end failed");
+    } else {
+        httpd_resp_send(req, "OTA Update Success", HTTPD_RESP_USE_STRLEN);
+          esp_restart();
+    }}
+    return ESP_OK;
     
-    return ESP_OK;
 }
 
 
-/*   // Вычисляем размер данных
-                int file_data_size = received - (data_start - buffer);
-                ESP_LOGI(TAG, "File data starts here...");
-                ESP_LOG_BUFFER_HEX(TAG, data_start, file_data_size);
-
-                // Сохраняем данные файла или продолжаем обработку
-                total_received += file_data_size;
-
-                // Отправляем ответ, подтверждающий готовность принять следующую часть
-                httpd_resp_set_type(req, "text/plain");
-                char response[64];
-                snprintf(response, sizeof(response), "Chunk %d received, ready for next", chunk_number);
-                httpd_resp_send(req, response, strlen(response));*/
-
-/*
-esp_err_t ota_post_handler(httpd_req_t *req) {
-    esp_err_t err;
-    char ota_write_data[2048]; // Буфер для входящих данных
-    int total_len = req->content_len;
-    int received_len = 0;
-    esp_ota_handle_t update_handle = 0;
-
-    ESP_LOGI(TAG, "Request method: %s", get_method_string(req->method));
-    ESP_LOGI(TAG, "Request URI: %s", req->uri);
-    ESP_LOGI(TAG, "Total OTA size: %d bytes", total_len);
-
-    const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
-    if (update_partition == NULL) {
-        ESP_LOGE(TAG, "Failed to find update partition");
-        return ESP_FAIL;
-    }
-
-    ESP_LOGI(TAG, "OTA Update initiated");
-
-    err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_ota_begin failed, error=%d", err);
-        return err;
-    }
-
-    // Извлечение границы
-    char boundary[256];
-    char *boundary_ptr = NULL; // Объявляем boundary_ptr здесь
-    if (httpd_req_get_hdr_value_str(req, "Content-Type", boundary, sizeof(boundary)) == ESP_OK) {
-        boundary_ptr = strstr(boundary, "boundary="); // Ищем границу
-        if (boundary_ptr) {
-            boundary_ptr += 9; // Пропустить 'boundary='
-            if (*boundary_ptr == '\"') {
-                boundary_ptr++;
-            }
-            char *end_boundary = strchr(boundary_ptr, '\"');
-            if (end_boundary) {
-                *end_boundary = '\0'; // Убираем строку на кавычке
-            }
-            ESP_LOGI(TAG, "Boundary: %s", boundary_ptr);
-        } else {
-            ESP_LOGE(TAG, "Boundary not found in Content-Type");
-            esp_ota_abort(update_handle);
-            return ESP_FAIL;
-        }
-    } else {
-        ESP_LOGE(TAG, "Failed to get Content-Type header");
-        esp_ota_abort(update_handle);
-        return ESP_FAIL;
-    }
-
-    // Reading and processing data
-    bool boundary_found = false;
-    char *start_data = NULL; // Инициализируем указатель на начало данных
-
-    while (received_len < total_len) {
-        int len = httpd_req_recv(req, ota_write_data, sizeof(ota_write_data));
-        if (len <= 0) {
-            if (len < 0) {
-                ESP_LOGE(TAG, "Error receiving data");
-                esp_ota_abort(update_handle);
-            }
-            break;
-        }
-
-        ESP_LOGI(TAG, "Received %d bytes", len);
-        ESP_LOG_BUFFER_HEX("Received raw data", ota_write_data, len);
-
-        // Start looking for the boundary in the data
-        if (!boundary_found) {
-            // Ищем границу в полученных данных
-            start_data = strstr(ota_write_data, boundary_ptr);
-            if (start_data) {
-                boundary_found = true;
-                start_data += strlen(boundary_ptr) + strlen("\r\n"); // Skip boundary and CRLF
-                len -= (start_data - ota_write_data); // Update length
-                memcpy(ota_write_data, start_data, len); // Copy data after boundary
-                ESP_LOGI(TAG, "Data after boundary: %.*s", len, ota_write_data);
-            } else {
-                ESP_LOGE(TAG, "Boundary not found in received data");
-                esp_ota_abort(update_handle);
-                return ESP_FAIL;
-            }
-        }
-
-        // После нахождения границы продолжаем запись OTA
-        if (boundary_found) {
-            err = esp_ota_write(update_handle, ota_write_data, len);
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG, "esp_ota_write failed, error=%d", err);
-                esp_ota_abort(update_handle);
-                return ESP_FAIL;
-            }
-            received_len += len; // Увеличиваем счетчик обработанных байтов
-            ESP_LOGI(TAG, "Written %d bytes to OTA. Total received: %d bytes", len, received_len);
-        }
-    }
-
-    err = esp_ota_end(update_handle);
-    if (err == ESP_OK) {
-        err = esp_ota_set_boot_partition(update_partition);
-        if (err == ESP_OK) {
-            ESP_LOGI(TAG, "OTA successful, rebooting...");
-            esp_restart();
-        } else {
-            ESP_LOGE(TAG, "Failed to set boot partition, error=%d", err);
-        }
-    } else {
-        ESP_LOGE(TAG, "OTA end failed, error=%d", err);
-    }
-
-    return ESP_OK;
-}
-
-*/
 
 
 esp_err_t save_wifi_settings_handler(httpd_req_t *req) {

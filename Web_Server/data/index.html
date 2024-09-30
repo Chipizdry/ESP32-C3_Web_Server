@@ -377,8 +377,10 @@
     </script>
 
 
+
 <script>
-    const CHUNK_SIZE = 1024; // Размер одной части (1КБ)
+    const CHUNK_SIZE = 2048; // Размер одной части
+    const MAX_RETRIES = 3;   // Максимальное количество попыток повторной отправки
 
     function uploadFirmware() {
         const fileInput = document.getElementById('firmwareFile');
@@ -392,49 +394,29 @@
 
         const file = fileInput.files[0];
         const totalSize = file.size;
-        let offset = 0; // Начальный смещение файла
-        let chunkCounter = 1; // Счетчик частей
+        let offset = 0; // Начальное смещение файла
+        let chunkCounter = 1; // Счётчик частей
+        let retryCount = 0; // Счётчик попыток для текущего чанка
 
         status.innerHTML = "Uploading firmware...";
         console.log(`Starting upload: ${file.name}, total size: ${totalSize} bytes`);
-       
-        // Функция отправки порции данных
+
+        // Функция отправки части данных
         function sendNextChunk() {
             const chunk = file.slice(offset, offset + CHUNK_SIZE);
 
             const formData = new FormData();
-            
             formData.append('fileName', file.name); // Имя файла
             formData.append('totalSize', totalSize); // Общий размер файла
             formData.append('chunkNumber', chunkCounter); // Номер части
             formData.append("chunk", chunk); // Добавление части файла
 
-            console.log(`Sending chunk ${chunkCounter} (size: ${chunk.size} bytes)`);
-            console.log(`Chunk data:`, chunk);
+            console.log(`Sending chunk ${chunkCounter} (size: ${chunk.size} bytes, attempt: ${retryCount + 1})`);
 
-           
-           
-            
-              console.log('Form Data:');
-            for (let [key, value] of formData.entries()) {
-                if (value instanceof File) {
-                    console.log(`${key}: File { name: '${value.name}', size: ${value.size}, type: '${value.type}' }`);
-                } else {
-                    console.log(`${key}: ${value}`);
-                }
-            }
-
-
-            // Заголовки
-            const headers = {
-                'Content-Range': `bytes ${offset}-${offset + chunk.size - 1}/${totalSize}` // добавляем Content-Range
-            };
-            console.log('Headers:', headers);
-
+            // Отправка через fetch
             fetch('/ota', {
                 method: 'POST',
-                body: formData,
-                headers: headers // Используем созданные заголовки
+                body: formData
             })
             .then(response => {
                 if (!response.ok) {
@@ -446,26 +428,33 @@
                 console.log(`Chunk ${chunkCounter} uploaded successfully, received server response: ${result}`);
                 offset += CHUNK_SIZE;
                 chunkCounter++;
+                retryCount = 0; // Сбросить количество попыток для следующего чанка
                 status.innerHTML = `Uploaded ${Math.min(offset, totalSize)} of ${totalSize} bytes`;
 
                 if (offset < totalSize) {
                     console.log(`Continuing upload: ${offset} of ${totalSize} bytes uploaded`);
-                    sendNextChunk(); // Отправляем следующую часть только после получения ответа
+                    sendNextChunk(); // Отправляем следующую часть только после успешного ответа
                 } else {
                     status.innerHTML = "Firmware upload completed successfully!";
                     console.log("Upload completed successfully!");
                 }
             })
             .catch(error => {
-                status.innerHTML = "Error uploading firmware!";
-                console.error('Error:', error);
+                console.error('Error uploading chunk:', error);
+                retryCount++; // Увеличиваем количество попыток
+                if (retryCount < MAX_RETRIES) {
+                    console.log(`Retrying chunk ${chunkCounter} (attempt: ${retryCount + 1})`);
+                    sendNextChunk(); // Повторно отправляем чанк
+                } else {
+                    status.innerHTML = "Error uploading firmware! Reached maximum retry attempts.";
+                    console.error(`Failed to upload chunk ${chunkCounter} after ${MAX_RETRIES} attempts.`);
+                }
             });
         }
 
-        sendNextChunk(); // Начинаем отправку частей
+        sendNextChunk(); // Начало отправки частей
     }
 </script>
-
    <script>
             
             // Получаем элементы модальных окон
