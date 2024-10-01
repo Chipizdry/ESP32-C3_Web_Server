@@ -19,10 +19,15 @@
 #include "esp_mac.h"
 #include "esp_mac.h"
 #include "nvs.h"
+#include "driver/uart.h"
+#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
+
 #include <time.h>
 #include "lwip/ip4_addr.h"
+#include "soc/gpio_num.h"
 
 
 // Статический IP и параметры Wi-Fi AP
@@ -40,6 +45,23 @@
 
 #define BOUNDARY_PREFIX "------WebKitFormBoundary"
 
+// Определите пины для UART
+#define TXD_PIN (GPIO_NUM_8)  // Передача данных (TX)
+#define RXD_PIN (GPIO_NUM_9)  // Приём данных (RX)
+#define RTS_PIN (UART_PIN_NO_CHANGE)  // Управление передачей данных (опционально)
+
+#define UART_PORT_NUM      UART_NUM_1
+#define UART_BAUD_RATE     9600
+#define UART_BUF_SIZE      (1024)
+
+#define HEADER_1 0x55
+#define HEADER_2 0xAA
+
+// Определяем командные коды
+#define COMMAND_REGULAR_REQUEST 0x01  // Команда для регулярного запроса данных
+#define COMMAND_FRONTEND 0x02         // Команда от фронтэнда
+// Размер очереди
+#define QUEUE_SIZE 10
 httpd_handle_t server_handle = NULL;
 
 // Основная функция приложения
@@ -54,6 +76,10 @@ static bool ota_started = false;
 static int total_received = 0;  // Общее количество полученных байт
 static int32_t rssi=0;
  
+static uint8_t request[64];  // Буфер для запроса 
+// Очередь команд
+
+static const char *TAG = "web_server";
 // Структура для хранения всех настроек
 typedef struct {
     float max_current;  // Максимальный ток
@@ -72,6 +98,133 @@ device_settings_t default_settings = {
     .wifi_password = "0445026833"
 };
 
+// Структура для передачи данных через очередь
+typedef struct {
+    uint8_t command;
+    uint8_t payload[10];  // Полезная нагрузка, максимальная длина 10 байт
+    uint8_t payload_len;
+} uart_command_t;
+
+static QueueHandle_t uart_queue;
+
+
+uint16_t calcCRC16(uint8_t *buffer, uint8_t u8length) {
+	unsigned int temp, temp2, flag;
+	temp = 0xFFFF;
+	for (unsigned char i = 0; i < u8length; i++) {
+		temp = temp ^ buffer[i];
+		for (unsigned char j = 1; j <= 8; j++) {
+			flag = temp & 0x0001;
+			temp >>= 1;
+			if (flag)
+				temp ^= 0xA001;
+		}
+	}
+	// Reverse byte order.
+	temp2 = temp >> 8;
+	temp = (temp << 8) | temp2;
+	temp &= 0xFFFF;
+	// the returned value is already swapped
+	// crcLo byte is first & crcHi byte is last
+	return temp;
+
+}
+
+// Функция для формирования запроса
+uint16_t form_tuya_request(uint8_t command, uint8_t *payload, uint16_t payload_len, uint8_t *request) {
+    uint16_t pos = 0;
+
+    // 1. Заголовок (2 байта)
+    request[pos++] = HEADER_1;
+    request[pos++] = HEADER_2;
+
+    // 2. Тип пакета (1 байт), 0x00 для запроса
+                    //         0x01 для команд
+                    //         0x02 для файлов прошивки
+              
+    request[pos++] = 0x00;
+
+    // 3. Идентификатор команды (1 байт)
+    request[pos++] = command;
+
+    // 4. Длина данных (2 байта) — длина полезной нагрузки
+    request[pos++] = (payload_len >> 8) & 0xFF;  // Старший байт длины
+    request[pos++] = payload_len & 0xFF;         // Младший байт длины
+
+    // 5. Полезная нагрузка (N байт)
+    if (payload != NULL && payload_len > 0) {
+        memcpy(&request[pos], payload, payload_len);
+        pos += payload_len;
+    }
+
+   // 6. CRC (2 байта) — вычисляем CRC для всех предыдущих данных
+    uint16_t crc = calcCRC16(request, pos);
+    request[pos++] = crc & 0xFF;         // Младший байт CRC
+    request[pos++] = (crc >> 8) & 0xFF;  // Старший байт CRC
+
+    return pos;  // Возвращаем длину сформированного запроса
+}
+
+
+void init_uart() {
+    const uart_port_t uart_num = UART_NUM_1; // Используем UART1 (или другой доступный UART)
+
+    uart_config_t uart_config = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+    };
+
+    // Настраиваем параметры UART
+    uart_param_config(uart_num, &uart_config);
+
+    // Указываем пины для TX и RX (проверьте правильность пинов)
+    uart_set_pin(uart_num, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+
+    // Устанавливаем драйвер UART с размером буфера RX/TX
+    int rx_buffer_size = 512;
+    int tx_buffer_size = 512;
+    uart_driver_install(uart_num, rx_buffer_size, tx_buffer_size, 0, NULL, 0);
+}
+    
+    
+// Задача, которая каждые 1с добавляет запрос в очередь
+void periodic_request_task(void *pvParameters) {
+    while (1) {
+        uart_command_t cmd;
+        cmd.command = COMMAND_REGULAR_REQUEST;  // Регулярный запрос данных
+        cmd.payload_len = 0;  // Нет полезной нагрузки для регулярного запроса
+
+        // Отправляем запрос в очередь
+        if (xQueueSend(uart_queue, &cmd, 0) != pdPASS) {
+            ESP_LOGW(TAG, "Failed to send regular request to queue");
+        }
+
+        // Ожидание 1 секунду перед отправкой следующего запроса
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}	
+	
+	// Задача отправки запросов и команд через UART
+void uart_command_task(void *pvParameters) {
+    uart_command_t cmd;
+    uint8_t request[64];
+    uint16_t request_len;
+
+    while (1) {
+        // Ожидаем запрос из очереди
+        if (xQueueReceive(uart_queue, &cmd, portMAX_DELAY) == pdPASS) {
+            // Формируем запрос
+            request_len = form_tuya_request(cmd.command, cmd.payload, cmd.payload_len, request);
+
+            // Отправляем запрос через UART
+            uart_write_bytes(UART_NUM_1, (const char *)request, request_len);
+            ESP_LOGI(TAG, "Sent command %d via UART", cmd.command);
+        }
+    }
+}
 	
 void init_nvs() {
     esp_err_t ret = nvs_flash_init();
@@ -140,7 +293,7 @@ void setup_random() {
 }
 
 void list_files(const char *base_path);
-static const char *TAG = "web_server";
+//static const char *TAG = "web_server";
 
 void wifi_signal_strength_task(void *pvParameters) {
     while (true) {
@@ -1180,6 +1333,7 @@ httpd_handle_t start_webserver(void) {
 
 
 void app_main(void) {
+	 
      // Инициализация NVS
     if (!nvs_initialized) {
         esp_err_t ret = nvs_flash_init();
@@ -1232,7 +1386,19 @@ void app_main(void) {
     save_settings_to_nvs(&current_settings);
     // Запуск веб-сервера
     start_webserver();
+ 
+      // Создаем очередь команд
+    uart_queue = xQueueCreate(QUEUE_SIZE, sizeof(uart_command_t));
+    if(uart_queue == NULL) {
+        ESP_LOGE(TAG, "Failed to create queue");
+        return;
+    }
        xTaskCreate(wifi_signal_strength_task, "wifi_signal_strength_task", 2048, NULL, 5, NULL);
-   
+   // Создаем задачу для регулярного запроса данных каждые 1с
+    xTaskCreate(periodic_request_task, "periodic_request_task", 2048, NULL, 5, NULL);
+
+    // Создаем задачу для отправки команд по UART
+    xTaskCreate(uart_command_task, "uart_command_task", 2048, NULL, 5, NULL);
+
 }
 
