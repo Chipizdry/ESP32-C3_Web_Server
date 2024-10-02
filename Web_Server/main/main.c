@@ -46,7 +46,7 @@
 #define BOUNDARY_PREFIX "------WebKitFormBoundary"
 
 // Определите пины для UART
-#define TXD_PIN (GPIO_NUM_8)  // Передача данных (TX)
+#define TXD_PIN (GPIO_NUM_10)  // Передача данных (TX)
 #define RXD_PIN (GPIO_NUM_9)  // Приём данных (RX)
 #define RTS_PIN (UART_PIN_NO_CHANGE)  // Управление передачей данных (опционально)
 
@@ -184,8 +184,8 @@ void init_uart() {
     uart_set_pin(uart_num, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
     // Устанавливаем драйвер UART с размером буфера RX/TX
-    int rx_buffer_size = 512;
-    int tx_buffer_size = 512;
+    int rx_buffer_size = 256;
+    int tx_buffer_size = 256;
     uart_driver_install(uart_num, rx_buffer_size, tx_buffer_size, 0, NULL, 0);
 }
     
@@ -219,9 +219,14 @@ void uart_command_task(void *pvParameters) {
             // Формируем запрос
             request_len = form_tuya_request(cmd.command, cmd.payload, cmd.payload_len, request);
 
+                   // Логируем запрос в формате HEX перед отправкой
+            ESP_LOGI(TAG, "Sending command %d via UART, request length: %d", cmd.command, request_len);
+            ESP_LOG_BUFFER_HEX(TAG, request, request_len);
+
+
             // Отправляем запрос через UART
             uart_write_bytes(UART_NUM_1, (const char *)request, request_len);
-            ESP_LOGI(TAG, "Sent command %d via UART", cmd.command);
+          
         }
     }
 }
@@ -1387,6 +1392,7 @@ void app_main(void) {
     // Запуск веб-сервера
     start_webserver();
  
+   init_uart();
       // Создаем очередь команд
     uart_queue = xQueueCreate(QUEUE_SIZE, sizeof(uart_command_t));
     if(uart_queue == NULL) {
