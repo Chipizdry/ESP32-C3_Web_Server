@@ -20,7 +20,7 @@
 #include "esp_mac.h"
 #include "nvs.h"
 #include "driver/uart.h"
-#include "driver/gpio.h"
+//#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -1282,7 +1282,7 @@ httpd_handle_t start_webserver(void) {
 			httpd_uri_t favicon_uri = {
 			    .uri = "/favicon.png",
 			    .method = HTTP_GET,
-			    .handler = get_ip_handler,
+			    .handler = file_get_handler,
 			    .user_ctx = NULL
 			};
 			httpd_register_uri_handler(server, &favicon_uri);
