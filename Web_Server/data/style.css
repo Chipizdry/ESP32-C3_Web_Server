@@ -224,3 +224,20 @@ footer {
     background-color: green;
 }
 /* Новые стили */
+.phase-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+.phase-table th, .phase-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+.phase-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}

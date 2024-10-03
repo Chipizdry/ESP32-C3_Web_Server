@@ -50,75 +50,73 @@
                     </div>
                 </div>
 
-                 <!-- Модальное окно настроек нагрузки -->
-<div id="loadSettingsModal" class="modal">
-    <div class="modal-content">
-        <span class="close" id="closeLoadSettings">&times;</span>
-        <h2>Настройки нагрузки</h2>
-        
-        <!-- Настройки -->
-        <div class="input-row">
-            <label for="maxCurrentDifference">Макс. разница тока (А):</label>
-            <input type="number" id="maxCurrentDifference" placeholder="Введите значение" />
-        </div>
-        
-        <div class="input-row">
-            <label for="maxLoad">Максимальная нагрузка (кВт):</label>
-            <input type="number" id="maxLoad" placeholder="Введите значение" />
-        </div>
+            <!-- Модальное окно настроек нагрузки -->
+        <div id="loadSettingsModal" class="modal">
+            <div class="modal-content">
+                <span class="close" id="closeLoadSettings">&times;</span>
+                <h2>Настройки нагрузки</h2>
 
-        <div class="input-row">
-            <label for="outputVoltage">Выходное напряжение (В):</label>
-            <input type="number" id="outputVoltage" placeholder="Введите значение" />
-        </div>
+                <!-- Параметры с прокруткой -->
+                <div class="input-textarea">
+                    <label for="maxCurrentDifference">Макс. разница тока (А):</label>
+                    <textarea id="maxCurrentDifference" rows="1" placeholder="Введите значение"></textarea>
+                </div>
 
-        <!-- Данные по фазам -->
-        <h3>Фазные данные (В, А, кВт)</h3>
-        <div class="phase-data">
-            <div class="phase-column">
-                <h4>Фаза 1</h4>
-                <label for="voltagePhase1">Напряжение:</label>
-                <input type="number" id="voltagePhase1" readonly />
-                <label for="currentPhase1">Ток:</label>
-                <input type="number" id="currentPhase1" readonly />
-                <label for="powerPhase1">Мощность:</label>
-                <input type="number" id="powerPhase1" readonly />
+                <div class="input-textarea">
+                    <label for="maxLoad">Максимальная нагрузка (кВт):</label>
+                    <textarea id="maxLoad" rows="1" placeholder="Введите значение"></textarea>
+                </div>
+
+                <div class="input-textarea">
+                    <label for="outputVoltage">Выходное напряжение (В):</label>
+                    <textarea id="outputVoltage" rows="1" placeholder="Введите значение"></textarea>
+                </div>
+
+                <!-- Таблица с фазами -->
+                <h3>Данные по фазам</h3>
+                <table class="phase-table">
+                    <thead>
+                        <tr>
+                            <th>Параметр</th>
+                            <th>Фаза A</th>
+                            <th>Фаза B</th>
+                            <th>Фаза C</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Напряжение (В)</td>
+                            <td id="voltagePhaseA">230</td>
+                            <td id="voltagePhaseB">229</td>
+                            <td id="voltagePhaseC">231</td>
+                        </tr>
+                        <tr>
+                            <td>Ток (А)</td>
+                            <td id="currentPhaseA">10</td>
+                            <td id="currentPhaseB">9.8</td>
+                            <td id="currentPhaseC">10.2</td>
+                        </tr>
+                        <tr>
+                            <td>Мощность (кВт)</td>
+                            <td id="powerPhaseA">2.3</td>
+                            <td id="powerPhaseB">2.2</td>
+                            <td id="powerPhaseC">2.4</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <!-- Суммарная мощность -->
+                <div class="input-textarea">
+                    <label for="totalPower">Суммарная мощность (кВт):</label>
+                    <textarea id="totalPower" rows="1" readonly></textarea>
+                </div>
+
+                <!-- Кнопка сохранения -->
+                <button id="saveLoadSettings">Сохранить</button>
+
+                <!-- Сообщение о подтверждении -->
+                <div id="confirmationMessage" style="display: none;"></div>
             </div>
-
-            <div class="phase-column">
-                <h4>Фаза 2</h4>
-                <label for="voltagePhase2">Напряжение:</label>
-                <input type="number" id="voltagePhase2" readonly />
-                <label for="currentPhase2">Ток:</label>
-                <input type="number" id="currentPhase2" readonly />
-                <label for="powerPhase2">Мощность:</label>
-                <input type="number" id="powerPhase2" readonly />
-            </div>
-
-            <div class="phase-column">
-                <h4>Фаза 3</h4>
-                <label for="voltagePhase3">Напряжение:</label>
-                <input type="number" id="voltagePhase3" readonly />
-                <label for="currentPhase3">Ток:</label>
-                <input type="number" id="currentPhase3" readonly />
-                <label for="powerPhase3">Мощность:</label>
-                <input type="number" id="powerPhase3" readonly />
-            </div>
         </div>
-
-        <!-- Суммарная мощность -->
-        <div class="input-row">
-            <label for="totalPower">Суммарная мощность (кВт):</label>
-            <input type="number" id="totalPower" readonly />
-        </div>
-
-        <!-- Кнопка сохранения -->
-        <button id="saveLoadSettings">Сохранить</button>
-
-        <!-- Сообщение о подтверждении -->
-        <div id="confirmationMessage" style="display: none;"></div>
-    </div>
-</div>
 
 
         <div id="inverterModal" class="modal">
