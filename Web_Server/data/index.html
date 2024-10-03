@@ -36,16 +36,90 @@
                 
                         <!-- Нижний порог отключения (с меню прокрутки) -->
                         <label for="lowThreshold">Нижний порог отключения, В:</label>
-                        <input type="number" id="lowThreshold" min="10" max="15" step="0.1" value="10.5">
+                        <input type="number" id="lowThreshold" min="38" max="50" step="0.1" value="48">
                 
                         <!-- Верхний порог напряжения (с меню прокрутки) -->
                         <label for="highThreshold">Верхний порог напряжения, В:</label>
-                        <input type="number" id="highThreshold" min="12" max="17" step="0.1" value="14.5">
-                
+                        <input type="number" id="highThreshold" min="43" max="64" step="0.1" value="54">
+                        <!-- Ползунок для установки максимального тока -->
+                        <label for="maxCurrentRange">Максимальный ток, А: <span id="maxCurrentValue">1</span></label>
+                        <input type="range" id="maxCurrentRange" min="0" max="80" step="0.1" value="30" oninput="updateMaxCurrent(this.value)" style="width: 300px;">
                         <!-- Кнопка Сохранить -->
                         <button onclick="saveBatterySettings()">Сохранить</button>
+                        <div id="confirmationMessage" style="margin-top: 10px; color: rgb(11, 226, 11); display: none;"></div>
                     </div>
                 </div>
+
+                 <!-- Модальное окно настроек нагрузки -->
+<div id="loadSettingsModal" class="modal">
+    <div class="modal-content">
+        <span class="close" id="closeLoadSettings">&times;</span>
+        <h2>Настройки нагрузки</h2>
+        
+        <!-- Настройки -->
+        <div class="input-row">
+            <label for="maxCurrentDifference">Макс. разница тока (А):</label>
+            <input type="number" id="maxCurrentDifference" placeholder="Введите значение" />
+        </div>
+        
+        <div class="input-row">
+            <label for="maxLoad">Максимальная нагрузка (кВт):</label>
+            <input type="number" id="maxLoad" placeholder="Введите значение" />
+        </div>
+
+        <div class="input-row">
+            <label for="outputVoltage">Выходное напряжение (В):</label>
+            <input type="number" id="outputVoltage" placeholder="Введите значение" />
+        </div>
+
+        <!-- Данные по фазам -->
+        <h3>Фазные данные (В, А, кВт)</h3>
+        <div class="phase-data">
+            <div class="phase-column">
+                <h4>Фаза 1</h4>
+                <label for="voltagePhase1">Напряжение:</label>
+                <input type="number" id="voltagePhase1" readonly />
+                <label for="currentPhase1">Ток:</label>
+                <input type="number" id="currentPhase1" readonly />
+                <label for="powerPhase1">Мощность:</label>
+                <input type="number" id="powerPhase1" readonly />
+            </div>
+
+            <div class="phase-column">
+                <h4>Фаза 2</h4>
+                <label for="voltagePhase2">Напряжение:</label>
+                <input type="number" id="voltagePhase2" readonly />
+                <label for="currentPhase2">Ток:</label>
+                <input type="number" id="currentPhase2" readonly />
+                <label for="powerPhase2">Мощность:</label>
+                <input type="number" id="powerPhase2" readonly />
+            </div>
+
+            <div class="phase-column">
+                <h4>Фаза 3</h4>
+                <label for="voltagePhase3">Напряжение:</label>
+                <input type="number" id="voltagePhase3" readonly />
+                <label for="currentPhase3">Ток:</label>
+                <input type="number" id="currentPhase3" readonly />
+                <label for="powerPhase3">Мощность:</label>
+                <input type="number" id="powerPhase3" readonly />
+            </div>
+        </div>
+
+        <!-- Суммарная мощность -->
+        <div class="input-row">
+            <label for="totalPower">Суммарная мощность (кВт):</label>
+            <input type="number" id="totalPower" readonly />
+        </div>
+
+        <!-- Кнопка сохранения -->
+        <button id="saveLoadSettings">Сохранить</button>
+
+        <!-- Сообщение о подтверждении -->
+        <div id="confirmationMessage" style="display: none;"></div>
+    </div>
+</div>
+
 
         <div id="inverterModal" class="modal">
             <div class="modal-content">
@@ -232,57 +306,55 @@
         </div>
 
 
-   <!-- Иконка нагрузки -->
-   <div class="icon power-icon">
-    <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
-    width="35.000000pt" height="35.000000pt" viewBox="0 0 2000.000000 2000.000000"
-    preserveAspectRatio="xMidYMid meet">
-   
-   <g transform="translate(0.000000,2000.000000) scale(0.100000,-0.100000)"
-   fill="#000000" stroke="none">
-   <path d="M9720 19994 c-368 -25 -539 -44 -777 -85 -1570 -269 -2983 -1137
-   -3945 -2423 -600 -801 -993 -1717 -1162 -2711 -23 -132 -54 -389 -68 -560 -18
-   -222 -15 -743 6 -945 91 -895 347 -1721 904 -2910 60 -129 274 -568 475 -975
-   470 -954 617 -1272 769 -1670 210 -548 328 -1053 328 -1410 0 -409 145 -748
-   423 -994 159 -140 350 -239 551 -285 155 -36 234 -37 2856 -34 l2575 4 95 21
-   c382 85 693 320 863 650 102 199 133 336 147 654 15 346 63 616 174 985 149
-   495 349 954 859 1979 347 695 543 1098 659 1355 482 1064 714 1856 789 2695
-   16 178 16 664 0 860 -57 713 -211 1353 -473 1974 -322 762 -774 1428 -1365
-   2012 -202 200 -252 246 -413 380 -985 818 -2192 1311 -3480 1419 -128 11 -691
-   21 -790 14z m775 -1268 c986 -104 1871 -464 2629 -1070 763 -610 1328 -1423
-   1635 -2353 216 -656 296 -1418 215 -2053 -68 -537 -248 -1140 -546 -1835 -127
-   -295 -277 -609 -596 -1250 -522 -1047 -680 -1384 -862 -1840 -285 -714 -437
-   -1345 -458 -1905 l-7 -175 -937 -3 -938 -2 0 1907 c0 2126 5 1979 -71 2132
-   -73 147 -209 262 -372 313 -102 32 -273 32 -369 0 -195 -65 -343 -214 -416
-   -419 -15 -44 -17 -194 -19 -1991 l-3 -1942 -938 2 -937 3 -2 80 c-22 785 -276
-   1635 -852 2842 -59 125 -261 539 -449 918 -187 380 -381 780 -432 890 -661
-   1433 -858 2348 -730 3382 128 1036 569 1995 1267 2758 894 978 2100 1550 3433
-   1629 132 8 619 -4 755 -18z"/>
-   <path d="M8592 14350 c-111 -29 -187 -74 -277 -165 -135 -135 -192 -281 -182
-   -470 9 -161 67 -294 177 -405 75 -75 147 -120 252 -158 l73 -27 1330 -3 c1479
-   -3 1419 -5 1560 64 388 190 474 695 170 1000 -83 84 -173 137 -280 164 -76 20
-   -111 20 -1414 19 -1282 0 -1339 -1 -1409 -19z"/>
-   <path d="M8664 12490 c-109 -16 -197 -54 -290 -123 -241 -182 -314 -531 -167
-   -796 53 -97 170 -209 263 -254 146 -71 49 -67 1535 -67 1487 0 1391 -4 1535
-   67 100 50 222 170 268 265 56 115 67 161 66 293 0 104 -3 130 -26 193 -70 194
-   -207 331 -399 398 l-84 29 -1325 1 c-729 1 -1348 -2 -1376 -6z"/>
-   <path d="M7415 4363 c-124 -16 -255 -83 -350 -178 -246 -245 -248 -630 -5
-   -876 92 -93 177 -142 302 -174 56 -14 81 -24 63 -24 -52 -2 -137 -29 -215 -68
-   -196 -100 -330 -322 -330 -549 0 -173 62 -318 189 -444 91 -89 167 -132 294
-   -165 58 -15 80 -24 60 -25 -61 0 -191 -50 -268 -101 -170 -114 -275 -310 -275
-   -515 0 -103 29 -217 77 -303 52 -95 170 -209 264 -254 139 -68 121 -67 860
-   -67 l667 0 81 -92 c45 -51 87 -98 94 -103 6 -6 43 -37 81 -69 194 -164 433
-   -279 688 -331 108 -21 152 -25 313 -25 161 0 205 4 313 25 327 67 585 213 834
-   474 l115 121 664 0 c738 0 720 -1 859 67 105 52 222 170 273 274 142 290 47
-   634 -223 808 -66 43 -197 90 -253 92 -21 0 1 9 61 24 125 32 210 81 302 174
-   224 226 241 570 42 824 -46 59 -137 134 -202 167 -49 25 -166 60 -204 61 -21
-   1 -4 7 49 20 129 32 218 81 310 174 118 118 171 235 182 401 16 253 -120 487
-   -350 598 -145 71 51 66 -2779 65 -1404 -1 -2566 -4 -2583 -6z"/>
-   </g>
-   </svg>
-   
-
-
+            <!-- Иконка нагрузки -->
+            <div class="icon power-icon" id="loadIcon">
+                <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
+                width="35.000000pt" height="35.000000pt" viewBox="0 0 2000.000000 2000.000000"
+                preserveAspectRatio="xMidYMid meet">
+            
+            <g transform="translate(0.000000,2000.000000) scale(0.100000,-0.100000)"
+            fill="#000000" stroke="none">
+            <path d="M9720 19994 c-368 -25 -539 -44 -777 -85 -1570 -269 -2983 -1137
+            -3945 -2423 -600 -801 -993 -1717 -1162 -2711 -23 -132 -54 -389 -68 -560 -18
+            -222 -15 -743 6 -945 91 -895 347 -1721 904 -2910 60 -129 274 -568 475 -975
+            470 -954 617 -1272 769 -1670 210 -548 328 -1053 328 -1410 0 -409 145 -748
+            423 -994 159 -140 350 -239 551 -285 155 -36 234 -37 2856 -34 l2575 4 95 21
+            c382 85 693 320 863 650 102 199 133 336 147 654 15 346 63 616 174 985 149
+            495 349 954 859 1979 347 695 543 1098 659 1355 482 1064 714 1856 789 2695
+            16 178 16 664 0 860 -57 713 -211 1353 -473 1974 -322 762 -774 1428 -1365
+            2012 -202 200 -252 246 -413 380 -985 818 -2192 1311 -3480 1419 -128 11 -691
+            21 -790 14z m775 -1268 c986 -104 1871 -464 2629 -1070 763 -610 1328 -1423
+            1635 -2353 216 -656 296 -1418 215 -2053 -68 -537 -248 -1140 -546 -1835 -127
+            -295 -277 -609 -596 -1250 -522 -1047 -680 -1384 -862 -1840 -285 -714 -437
+            -1345 -458 -1905 l-7 -175 -937 -3 -938 -2 0 1907 c0 2126 5 1979 -71 2132
+            -73 147 -209 262 -372 313 -102 32 -273 32 -369 0 -195 -65 -343 -214 -416
+            -419 -15 -44 -17 -194 -19 -1991 l-3 -1942 -938 2 -937 3 -2 80 c-22 785 -276
+            1635 -852 2842 -59 125 -261 539 -449 918 -187 380 -381 780 -432 890 -661
+            1433 -858 2348 -730 3382 128 1036 569 1995 1267 2758 894 978 2100 1550 3433
+            1629 132 8 619 -4 755 -18z"/>
+            <path d="M8592 14350 c-111 -29 -187 -74 -277 -165 -135 -135 -192 -281 -182
+            -470 9 -161 67 -294 177 -405 75 -75 147 -120 252 -158 l73 -27 1330 -3 c1479
+            -3 1419 -5 1560 64 388 190 474 695 170 1000 -83 84 -173 137 -280 164 -76 20
+            -111 20 -1414 19 -1282 0 -1339 -1 -1409 -19z"/>
+            <path d="M8664 12490 c-109 -16 -197 -54 -290 -123 -241 -182 -314 -531 -167
+            -796 53 -97 170 -209 263 -254 146 -71 49 -67 1535 -67 1487 0 1391 -4 1535
+            67 100 50 222 170 268 265 56 115 67 161 66 293 0 104 -3 130 -26 193 -70 194
+            -207 331 -399 398 l-84 29 -1325 1 c-729 1 -1348 -2 -1376 -6z"/>
+            <path d="M7415 4363 c-124 -16 -255 -83 -350 -178 -246 -245 -248 -630 -5
+            -876 92 -93 177 -142 302 -174 56 -14 81 -24 63 -24 -52 -2 -137 -29 -215 -68
+            -196 -100 -330 -322 -330 -549 0 -173 62 -318 189 -444 91 -89 167 -132 294
+            -165 58 -15 80 -24 60 -25 -61 0 -191 -50 -268 -101 -170 -114 -275 -310 -275
+            -515 0 -103 29 -217 77 -303 52 -95 170 -209 264 -254 139 -68 121 -67 860
+            -67 l667 0 81 -92 c45 -51 87 -98 94 -103 6 -6 43 -37 81 -69 194 -164 433
+            -279 688 -331 108 -21 152 -25 313 -25 161 0 205 4 313 25 327 67 585 213 834
+            474 l115 121 664 0 c738 0 720 -1 859 67 105 52 222 170 273 274 142 290 47
+            634 -223 808 -66 43 -197 90 -253 92 -21 0 1 9 61 24 125 32 210 81 302 174
+            224 226 241 570 42 824 -46 59 -137 134 -202 167 -49 25 -166 60 -204 61 -21
+            1 -4 7 49 20 129 32 218 81 310 174 118 118 171 235 182 401 16 253 -120 487
+            -350 598 -145 71 51 66 -2779 65 -1404 -1 -2566 -4 -2583 -6z"/>
+            </g>
+            </svg>
+            
     </div>
 
     </div>
@@ -291,9 +363,7 @@
     <p>Скорость, Об.мин.: <span id="speed">0</span></p>
 
     
-    <!-- Ползунок для установки максимального тока -->
-    <label for="maxCurrentRange">Максимальный ток, А: <span id="maxCurrentValue">1</span></label>
-    <input type="range" id="maxCurrentRange" min="0" max="50" step="0.1" value="1" oninput="updateMaxCurrent(this.value)" style="width: 300px;">
+  
 </div>
 
         <!-- Контент вкладки Мониторинг -->
@@ -383,11 +453,18 @@
 <script>
     function saveBatterySettings() {
         // Получаем значения из полей ввода модального окна
-        const lowThreshold = document.getElementById("lowThreshold").value;
-        const highThreshold = document.getElementById("highThreshold").value;
+        const lowThreshold = parseFloat(document.getElementById("lowThreshold").value);
+        const highThreshold = parseFloat(document.getElementById("highThreshold").value);
+        const maxCurrentRange = document.getElementById("maxCurrentRange").value;
+
+        // Проверяем, что нижний порог меньше верхнего на 1 В
+        if (lowThreshold >= highThreshold - 1) {
+            alert("Нижний порог должен быть как минимум на 1 В ниже верхнего порога.");
+            return;  // Выходим из функции, не отправляя данные
+        }
 
         // Формируем строку в формате x-www-form-urlencoded
-        const urlEncodedData = `lowThreshold=${encodeURIComponent(lowThreshold)}&highThreshold=${encodeURIComponent(highThreshold)}`;
+        const urlEncodedData = `lowThreshold=${encodeURIComponent(lowThreshold)}&highThreshold=${encodeURIComponent(highThreshold)}&maxCurrentRange=${encodeURIComponent(maxCurrentRange)}`;
 
         // Отправляем POST-запрос на сервер
         fetch('/post', {
@@ -398,9 +475,15 @@
             body: urlEncodedData  // Передаем данные в формате x-www-form-urlencoded
         })
         .then(response => response.text())  // Ожидаем ответ в виде текста
-        .then(result => {
-            console.log('Success:', result);  // Логируем успешный результат
-            // Здесь можно добавить действия при успешном сохранении настроек
+       .then(result => {
+        console.log('Success:', result);  // Логируем успешный результат
+           // Отображаем сообщение о подтверждении
+          document.getElementById("confirmationMessage").innerText = "Настройки успешно сохранены!";
+          document.getElementById("confirmationMessage").style.display = "block"; // Показываем сообщение
+          setTimeout(() => {
+            document.getElementById("confirmationMessage").style.display = "none"; // Скрываем сообщение
+            }, 3000);
+
         })
         .catch(error => {
             console.error('Error:', error);  // Логируем ошибки
@@ -492,19 +575,19 @@
     }
 </script>
    <script>
-            
+            document.addEventListener("DOMContentLoaded", function() {
             // Получаем элементы модальных окон
                 const batteryModal = document.getElementById('batteryModal');
                 const inverterModal = document.getElementById('inverterModal');
-                
+                const loadModal = document.getElementById('loadSettingsModal');
                 // Получаем иконки
                 const batteryIcon = document.getElementById('batteryIcon');
                 const inverterIcon = document.getElementById('inverterIcon');
-                
+                const loadIcon = document.getElementById('loadIcon'); 
                 // Получаем кнопки закрытия модальных окон
                 const closeBattery = document.getElementById('closeBattery');
                 const closeInverter = document.getElementById('closeInverter');
-                
+                const closeLoad = document.getElementById('closeLoadSettings');
                 // Открытие модального окна для батареи
                 batteryIcon.onclick = function() {
                     batteryModal.style.display = 'flex';
@@ -515,7 +598,11 @@
                     inverterModal.style.display = 'flex';
                     
                 }
-                
+                  // Открытие модального окна для нагрузки
+                loadIcon.onclick = function() {
+                    loadModal.style.display = 'flex';
+                }
+
                 // Закрытие модальных окон
                 closeBattery.onclick = function() {
                     batteryModal.style.display = 'none';
@@ -523,7 +610,9 @@
                 closeInverter.onclick = function() {
                     inverterModal.style.display = 'none';
                 }
-                
+                closeLoad.onclick = function() {
+                    loadModal.style.display = 'none'; 
+                }
                 // Закрытие модального окна при клике вне его
                 window.onclick = function(event) {
                     if (event.target == batteryModal) {
@@ -532,8 +621,11 @@
                     if (event.target == inverterModal) {
                         inverterModal.style.display = 'none';
                     }
+                    if (event.target == loadModal) { 
+                        loadModal.style.display = 'none';
+                    }
                 }
-                
+            });
     </script>
 
 

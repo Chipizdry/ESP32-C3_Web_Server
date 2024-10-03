@@ -1147,18 +1147,37 @@ esp_err_t post_handler(httpd_req_t *req) {
     // Находим параметры в теле запроса
     char *lowThreshold = strstr(buf, "lowThreshold=");
     char *highThreshold = strstr(buf, "highThreshold=");
-
+    char *maxCurrentRange= strstr(buf, "maxCurrentRange=");
     // Проверяем, что параметры найдены
     if (lowThreshold && highThreshold) {
-        // Извлекаем значение после ключа и преобразуем его в float
-        float low = atof(lowThreshold + strlen("lowThreshold="));
-        cmd.command = 3;  // Команда для настройки батареи
-        cmd.payload[0] = (uint8_t)(low* 10);  // Пример кодирования значения
-        cmd.payload_len = 1;
-        // Аналогично для highThreshold
-        float high = atof(highThreshold + strlen("highThreshold="));
-        cmd.payload[1] = (uint8_t)(high* 10);  // Пример кодирования значения
-        cmd.payload_len = 2;
+      // Извлекаем значение после ключа и преобразуем его в float
+			float low = atof(lowThreshold + strlen("lowThreshold="));
+			cmd.command = 3;  // Команда для настройки батареи
+			
+			// Преобразуем значение в uint16_t и сохраняем в два байта
+			uint16_t low_value = (uint16_t)(low * 10);  // Пример кодирования значения с точностью до 0.1
+			
+			// Сохраняем старший и младший байты в payload
+			cmd.payload[0] = (low_value >> 8) & 0xFF;  // Старший байт
+			cmd.payload[1] = low_value & 0xFF;         // Младший байт
+			cmd.payload_len = 2;  // Используем два байта для одного значения
+			
+			// Аналогично для highThreshold
+			float high = atof(highThreshold + strlen("highThreshold="));
+			uint16_t high_value = (uint16_t)(high * 10);  // Пример кодирования значения с точностью до 0.1
+			
+			// Сохраняем старший и младший байты в payload
+			cmd.payload[2] = (high_value >> 8) & 0xFF;  // Старший байт
+			cmd.payload[3] = high_value & 0xFF;         // Младший байт
+			
+			
+		float maxCurrent= atof(maxCurrentRange + strlen("maxCurrentRange="));
+		uint16_t current_value = (uint16_t)(maxCurrent* 10);
+		// Сохраняем старший и младший байты в payload
+			cmd.payload[4] = (current_value >> 8) & 0xFF;  // Старший байт
+			cmd.payload[5] = current_value & 0xFF;         // Младший байт	
+			cmd.payload_len = 6;  // Используем четыре байта для двух значений
+              
         // Логируем значения
         ESP_LOGI(TAG, "Low Threshold: %.2f, High Threshold: %.2f", low, high);
 
@@ -1175,7 +1194,8 @@ esp_err_t post_handler(httpd_req_t *req) {
         ESP_LOGW(TAG, "Failed to send command to UART queue");
     }
     // Отправляем успешный ответ
-    httpd_resp_send(req, "POST data received", HTTPD_RESP_USE_STRLEN);
+   // httpd_resp_send(req, "POST data received", HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send(req, "Настройки успешно сохранены", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
@@ -1203,7 +1223,7 @@ esp_err_t data_get_handler(httpd_req_t *req) {
 
 
 esp_err_t file_get_handler(httpd_req_t *req) {
-    char filepath[600];
+    char filepath[522];
     if (strcmp(req->uri, "/") == 0) {
         snprintf(filepath, sizeof(filepath), "/littlefs/index.html");
     } else if (strcmp(req->uri, "/favicon.png") == 0) {
