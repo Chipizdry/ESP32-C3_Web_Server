@@ -18,6 +18,9 @@
             Соединение с сервером  <p>Сигнал, dBm.: <span id="Signal">0</span></p>
         </div>
                 <!-- Модальные окна -->
+
+                  <!-- Модальное окно настроек батареи -->
+
                 <div id="batteryModal" class="modal">
                     <div class="modal-content">
                         <span class="close" id="closeBattery">&times;</span>
@@ -377,6 +380,38 @@
         }, 100);
     </script>
 
+<script>
+    function saveBatterySettings() {
+        // Получаем значения из полей ввода модального окна
+        const lowThreshold = document.getElementById("lowThreshold").value;
+        const highThreshold = document.getElementById("highThreshold").value;
+
+        // Формируем строку в формате x-www-form-urlencoded
+        const urlEncodedData = `lowThreshold=${encodeURIComponent(lowThreshold)}&highThreshold=${encodeURIComponent(highThreshold)}`;
+
+        // Отправляем POST-запрос на сервер
+        fetch('/post', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: urlEncodedData  // Передаем данные в формате x-www-form-urlencoded
+        })
+        .then(response => response.text())  // Ожидаем ответ в виде текста
+        .then(result => {
+            console.log('Success:', result);  // Логируем успешный результат
+            // Здесь можно добавить действия при успешном сохранении настроек
+        })
+        .catch(error => {
+            console.error('Error:', error);  // Логируем ошибки
+        });
+    }
+
+    // Закрытие модального окна (если нужно)
+    document.getElementById("closeBattery").onclick = function() {
+        document.getElementById("batteryModal").style.display = "none";
+    }
+</script>
 
 
 <script>

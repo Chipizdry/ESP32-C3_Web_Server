@@ -1138,8 +1138,43 @@ esp_err_t post_handler(httpd_req_t *req) {
 
     buf[ret] = '\0';
     ESP_LOGI(TAG, "Received POST data: %s", buf);
+     uart_command_t cmd;
+     if (ret > 0) {
+    buf[ret] = 0;  // Завершаем строку
+
     
- 
+
+    // Находим параметры в теле запроса
+    char *lowThreshold = strstr(buf, "lowThreshold=");
+    char *highThreshold = strstr(buf, "highThreshold=");
+
+    // Проверяем, что параметры найдены
+    if (lowThreshold && highThreshold) {
+        // Извлекаем значение после ключа и преобразуем его в float
+        float low = atof(lowThreshold + strlen("lowThreshold="));
+        cmd.command = 3;  // Команда для настройки батареи
+        cmd.payload[0] = (uint8_t)(low* 10);  // Пример кодирования значения
+        cmd.payload_len = 1;
+        // Аналогично для highThreshold
+        float high = atof(highThreshold + strlen("highThreshold="));
+        cmd.payload[1] = (uint8_t)(high* 10);  // Пример кодирования значения
+        cmd.payload_len = 2;
+        // Логируем значения
+        ESP_LOGI(TAG, "Low Threshold: %.2f, High Threshold: %.2f", low, high);
+
+        // Можно сохранить параметры или передать их для дальнейшей обработки
+    } else {
+        ESP_LOGW(TAG, "Failed to find thresholds in the POST data");
+    }
+} else {
+    ESP_LOGE(TAG, "Failed to receive POST data");
+}
+   
+   // Отправляем команду в очередь UART
+    if (xQueueSend(uart_queue, &cmd, 0) != pdPASS) {
+        ESP_LOGW(TAG, "Failed to send command to UART queue");
+    }
+    // Отправляем успешный ответ
     httpd_resp_send(req, "POST data received", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
