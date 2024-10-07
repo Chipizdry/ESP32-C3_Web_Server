@@ -26,10 +26,11 @@
                         <span class="close" id="closeBattery">&times;</span>
                         <p>Информация о батарее</p>
                         
-                        <!-- Текущее напряжение (в Вольтах) -->
-                        <label for="currentVoltage">Текущее напряжение, В:</label>
-                        <input type="text" id="currentVoltage" disabled value="12.5"> <!-- пример значения -->
-                
+                        <!-- Текущее напряжение (в Вольтах) 
+                        <label for="batt_voltage">Текущее напряжение, В:</label>
+                        <input type="text" id="batt_voltage" disabled value="0"> --><!-- пример значения -->
+                        <p>Текущее напряжение, В: <span id="batt_voltage">0</span></p>
+                        <p>Ток заряда/разряда, A: <span id="batt_curr">0</span></p>
                         <!-- Уровень заряда (в процентах) -->
                         <label for="chargeLevel">Уровень заряда, %:</label>
                         <input type="text" id="chargeLevel" disabled value="85"> <!-- пример значения -->
@@ -86,15 +87,15 @@
                     <tbody>
                         <tr>
                             <td>Напряжение (В)</td>
-                            <td id="voltagePhaseA">230</td>
-                            <td id="voltagePhaseB">229</td>
-                            <td id="voltagePhaseC">231</td>
+                            <td id="v_ac_out_1">0</td>
+                            <td id="v_ac_out_2">0</td>
+                            <td id="v_ac_out_3">0</td>
                         </tr>
                         <tr>
                             <td>Ток (А)</td>
-                            <td id="currentPhaseA">10</td>
-                            <td id="currentPhaseB">9.8</td>
-                            <td id="currentPhaseC">10.2</td>
+                            <td id="I_AC_Out_1">0</td>
+                            <td id="I_AC_Out_2">0</td>
+                            <td id="I_AC_Out_3">0</td>
                         </tr>
                         <tr>
                             <td>Мощность (кВт)</td>
@@ -107,7 +108,7 @@
                 <!-- Суммарная мощность -->
                 <div class="input-textarea">
                     <label for="totalPower">Суммарная мощность (кВт):</label>
-                    <textarea id="totalPower" rows="1" readonly></textarea>
+                    <textarea id="total_load" rows="1"></textarea>
                 </div>
 
                 <!-- Кнопка сохранения -->
@@ -357,7 +358,7 @@
 
     </div>
     <br><br><br><br>
-    <p>Напряжение питания, В: <span id="voltage">0</span></p>
+    <p>Напряжение питания, В: <span id="batt_voltage">0</span></p>
     <p>Скорость, Об.мин.: <span id="speed">0</span></p>
 
     
@@ -841,7 +842,7 @@ function updateData() {
 
     xhr.open("GET", "/data", true);
     
-    // Устанавливаем таймаут на 5 секунд (5000 мс)
+    // Устанавливаем таймаут на 2 секунды (2000 мс)
     xhr.timeout = 2000;
 
     xhr.onreadystatechange = function () {
@@ -850,11 +851,26 @@ function updateData() {
                 if (xhr.status == 200) {
                     // Сервер ответил успешно, обновляем данные
                     var data = JSON.parse(xhr.responseText);
-                    document.getElementById("voltage").innerText = data.voltage;
-                    document.getElementById("speed").innerText = data.speed;
+                   
+                    console.log(data);
+                      // Обновляем данные по напряжению на выходе по трём фазам (v_ac_out)
+                    document.getElementById("v_ac_out_1").innerText = data.v_ac_out[0];
+                    document.getElementById("v_ac_out_2").innerText = data.v_ac_out[1];
+                    document.getElementById("v_ac_out_3").innerText = data.v_ac_out[2];
+
+                    // Обновляем данные по току на выходе по трём фазам (I_AC_Out)
+                    document.getElementById("I_AC_Out_1").innerText = data.I_AC_Out[0];
+                    document.getElementById("I_AC_Out_2").innerText = data.I_AC_Out[1];
+                    document.getElementById("I_AC_Out_3").innerText = data.I_AC_Out[2];
+
+                    // Обновляем другие параметры
+                    document.getElementById("total_load").innerText = data.total_load;
                     document.getElementById("temperature").innerText = data.temperature;
-                    document.getElementById("current").innerText = data.current;
+                    document.getElementById("batt_voltage").innerText = data.batt_voltage;
+                    document.getElementById("batt_curr").innerText = data.batt_curr;
+                    document.getElementById("speed").innerText = data.speed;
                     document.getElementById("Signal").innerText = data.Signal;
+   
 
                     // Обновляем данные графика
                     updateChart(data.speed);
@@ -885,7 +901,7 @@ function updateData() {
     xhr.send();
 }
 
-        // Обновление данных каждые 1 секунду
+        // Обновление данных каждые 0.5 секунды
       setInterval(updateData, 500); 
         
         

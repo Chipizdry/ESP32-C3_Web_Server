@@ -105,6 +105,17 @@ typedef struct {
     uint8_t payload_len;
 } uart_command_t;
 
+
+// Структура для данных
+typedef struct {
+    float voltage[3];  // Массив для трех фаз напряжения
+    float current[3];  // Массив для трех фаз тока
+    float total_load;  // Суммарная нагрузка
+    int speed;         // Скорость
+    float temperature; // Температура
+    int signal_strength; // Сигнал (RSSI)
+} sensor_data_t;
+
 static QueueHandle_t uart_queue;
 
 
@@ -1202,16 +1213,37 @@ esp_err_t post_handler(httpd_req_t *req) {
 esp_err_t data_get_handler(httpd_req_t *req) {
     // Пример данных
    // Генерация примеров данных
-    float voltage = 10.0 + ((float)(rand() % 101)) / 10.0;  // Генерация напряжения от 10 до 20 В
-    int speed = 1500 + (rand() % 1001);  // Генерация скорости от 1500 до 2500 об/мин
-    float temperature = 20.0 + ((float)(rand() % 301)) / 10.0;  // Генерация температуры от 20 до 50 °C
-    float current = 0.5 + ((float)(rand() % 100)) / 100.0;  // Генерация тока от 0.5 до 1.5 А
+    sensor_data_t data;
+
+    float batt_voltage = 40.0 + ((float)(rand() % 101)) / 10.0;  // Генерация напряжения от 10 до 20 В
+    data.speed = 1500 + (rand() % 1001);  // Генерация скорости от 1500 до 2500 об/мин
+    data.temperature = 20.0 + ((float)(rand() % 301)) / 10.0;  // Генерация температуры от 20 до 50 °C
+    float batt_current = 0.5 + ((float)(rand() % 100)) / 100.0;  // Генерация тока от 0.5 до 1.5 А
     
+     for (int i = 0; i < 3; i++) {
+        data.voltage[i] = 220.0 + ((float)(rand() % 101)) / 10.0;  // Напряжение по каждой фазе
+        data.current[i] = 10.0 + ((float)(rand() % 101)) / 10.0;   // Ток по каждой фазе
+    }
+    data.total_load=30.0 + ((float)(rand() % 101)) / 10.0;
     ESP_LOGI("WEB_SERVER", "Request received");
      // Формирование JSON-ответа
     char response[264];
-    snprintf(response, sizeof(response),
-             "{\"voltage\": %.2f, \"speed\": %d, \"temperature\": %.1f, \"current\": %.2f,\"Signal\":%ld}",voltage, speed, temperature, current,(long int)rssi);
+  //  snprintf(response, sizeof(response),
+   //          "{\"voltage\": %.2f, \"speed\": %d, \"temperature\": %.1f, \"current\": %.2f,\"Signal\":%ld}",batt_voltage, data.speed, data.temperature, current,(long int)rssi);
+
+
+        snprintf(response, sizeof(response),
+             "{\"v_ac_out\": [%.2f, %.2f, %.2f], "
+             "\"I_AC_Out\": [%.2f, %.2f, %.2f], "
+             "\"total_load\": %.2f,"
+             "\"temperature\": %.1f,"
+             "\"batt_voltage\":%.2f,"
+             "\"batt_curr\":%.2f,"
+             "\"speed\": %d,"
+             " \"Signal\": %ld}",
+             data.voltage[0], data.voltage[1], data.voltage[2],
+             data.current[0], data.current[1], data.current[2],
+             data.total_load,data.temperature,batt_voltage, batt_current,data.speed , (long int)rssi);
 
     // Отправка ответа клиенту
     httpd_resp_set_type(req, "application/json");
