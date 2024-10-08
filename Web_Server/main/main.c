@@ -1161,10 +1161,9 @@ esp_err_t post_handler(httpd_req_t *req) {
     char *maxCurrentRange= strstr(buf, "maxCurrentRange=");
     // Проверяем, что параметры найдены
     if (lowThreshold && highThreshold) {
+		cmd.command = 3;  // Команда для настройки батареи
       // Извлекаем значение после ключа и преобразуем его в float
-			float low = atof(lowThreshold + strlen("lowThreshold="));
-			cmd.command = 3;  // Команда для настройки батареи
-			
+			float low = atof(lowThreshold + strlen("lowThreshold="));	
 			// Преобразуем значение в uint16_t и сохраняем в два байта
 			uint16_t low_value = (uint16_t)(low * 10);  // Пример кодирования значения с точностью до 0.1
 			
@@ -1180,22 +1179,21 @@ esp_err_t post_handler(httpd_req_t *req) {
 			// Сохраняем старший и младший байты в payload
 			cmd.payload[2] = (high_value >> 8) & 0xFF;  // Старший байт
 			cmd.payload[3] = high_value & 0xFF;         // Младший байт
-			
-			
-		float maxCurrent= atof(maxCurrentRange + strlen("maxCurrentRange="));
-		uint16_t current_value = (uint16_t)(maxCurrent* 10);
-		// Сохраняем старший и младший байты в payload
+						
+	    	float maxCurrent= atof(maxCurrentRange + strlen("maxCurrentRange="));
+		    uint16_t current_value = (uint16_t)(maxCurrent* 10);
+		    // Сохраняем старший и младший байты в payload
 			cmd.payload[4] = (current_value >> 8) & 0xFF;  // Старший байт
 			cmd.payload[5] = current_value & 0xFF;         // Младший байт	
 			cmd.payload_len = 6;  // Используем четыре байта для двух значений
               
         // Логируем значения
         ESP_LOGI(TAG, "Low Threshold: %.2f, High Threshold: %.2f", low, high);
-
-        // Можно сохранить параметры или передать их для дальнейшей обработки
     } else {
         ESP_LOGW(TAG, "Failed to find thresholds in the POST data");
     }
+    
+    
 } else {
     ESP_LOGE(TAG, "Failed to receive POST data");
 }
@@ -1228,10 +1226,6 @@ esp_err_t data_get_handler(httpd_req_t *req) {
     ESP_LOGI("WEB_SERVER", "Request received");
      // Формирование JSON-ответа
     char response[264];
-  //  snprintf(response, sizeof(response),
-   //          "{\"voltage\": %.2f, \"speed\": %d, \"temperature\": %.1f, \"current\": %.2f,\"Signal\":%ld}",batt_voltage, data.speed, data.temperature, current,(long int)rssi);
-
-
         snprintf(response, sizeof(response),
              "{\"v_ac_out\": [%.2f, %.2f, %.2f], "
              "\"I_AC_Out\": [%.2f, %.2f, %.2f], "
