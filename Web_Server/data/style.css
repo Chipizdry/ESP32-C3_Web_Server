@@ -90,8 +90,9 @@ input[type="text"], input[type="password"] {
     display: block;
     margin-bottom: 15px;
     padding: 12px 15px;
-    width: 100%;
-    max-width: 100%;
+    width: 80%;
+    align-items: center;
+/*max-width: 100%;*/
     border: 1px solid #ccc;
     border-radius: 5px;
     box-sizing: border-box;
@@ -193,8 +194,9 @@ footer {
     padding: 20px;
     border-radius: 5px;
     text-align: center;
+    align-items: center;
     width: 50%; /* Фиксированная ширина для всех модальных окон */
-    max-width: 600px; /* Ограничение по максимальной ширине */
+    max-width: 450px; /* Ограничение по максимальной ширине */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Для более красивого отображения */
 }
 
@@ -240,4 +242,50 @@ footer {
 .phase-table th {
     background-color: #f2f2f2;
     font-weight: bold;
+} 
+
+/* Стили для строк с вводом данных */
+.input-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px; /* Уменьшаем отступ между строками */
+    gap: 2px; /* Используем gap для уменьшения пространства между label и input */
+}
+
+/* Стили для label (наименований параметров) */
+.input-row label {
+    flex: 1; /* Растягиваем label, чтобы текст располагался слева */
+    align-items: center;
+    margin-right: 3px; /* Отступ между текстом и полем ввода */
+}
+
+/* Стили для input */
+.input-row input[type="number"] {
+    flex: 0; /* Не растягиваем поле ввода */
+    width: 45px; /* Фиксированная ширина для числового ввода */
+   /* border: none;  Убираем рамку */
+    border: 2px solid #747373;
+    border-radius: 5px;
+    background-color: transparent; /* Убираем фон */
+    text-align:left; /* Выравниваем текст */
+}
+
+/* Ползунок (input[type="range"]) оставляем как есть */
+.input-row input[type="range"] {
+    flex: 0; /* Ползунок растягивается по ширине */
+}
+
+/* Кнопка Сохранить */
+button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #337e37;
 }

@@ -30,17 +30,19 @@
                        
                         <p>Текущее напряжение, В: <span id="batt_voltage">0</span></p>
                         <p>Ток заряда/разряда, A: <span id="batt_curr">0</span></p>
-                        <!-- Уровень заряда (в процентах) -->
-                        <label for="chargeLevel">Уровень заряда, %:</label>
-                        <input type="text" id="chargeLevel" disabled value="85"> <!-- пример значения -->
-                
-                        <!-- Нижний порог отключения (с меню прокрутки) -->
-                        <label for="lowThreshold">Нижний порог отключения, В:</label>
-                        <input type="number" id="lowThreshold" min="38" max="50" step="0.1" value="48">
-                
-                        <!-- Верхний порог напряжения (с меню прокрутки) -->
-                        <label for="highThreshold">Верхний порог напряжения, В:</label>
-                        <input type="number" id="highThreshold" min="43" max="64" step="0.1" value="54">
+                        <p>Уровень заряда, %: <span id="chargeLevel">85</span></p>
+                       
+                         <!-- Нижний порог отключения -->
+                        <div class="input-row">
+                            <label for="lowThreshold">Нижний порог отключения, В:</label>
+                            <input type="number" id="lowThreshold" min="38" max="50" step="0.1" value="48">
+                        </div>
+
+                        <!-- Верхний порог напряжения -->
+                        <div class="input-row">
+                            <label for="highThreshold">Верхний порог напряжения, В:</label>
+                            <input type="number" id="highThreshold" min="43" max="64" step="0.1" value="54">
+                        </div>
                         <!-- Ползунок для установки максимального тока -->
                         <label for="maxCurrentRange">Максимальный ток, А: <span id="maxCurrentValue">1</span></label>
                         <input type="range" id="maxCurrentRange" min="0" max="80" step="0.1" value="30" oninput="updateMaxCurrent(this.value)" style="width: 300px;">
@@ -50,16 +52,23 @@
                     </div>
                 </div>
 
-            <!-- Модальное окно настроек нагрузки -->
+            <!-- Модальное окно параметров нагрузки -->
         <div id="loadSettingsModal" class="modal">
             <div class="modal-content">
                 <span class="close" id="closeLoadSettings">&times;</span>
                 <h2>Параметры нагрузки</h2>
-              
-                    <p>Максимальная нагрузка (кВт): <input type="number" id="maxLoad" min="0" step="0.1"></p>
-                    <p>Выходное напряжение (В): <input type="number" id="outputVoltage" min="0" step="1"></p>
-                    <p>Макс. разница тока (А): <input type="number" id="maxCurrentDifference" min="0" step="0.1"></p>
-               
+                <div class="input-row">
+                    <label for="maxLoad">Максимальная нагрузка,(кВт):</label>
+                    <input type="number" id="maxLoad" min="1" max="30" step="0.1" value="10">
+                </div>
+                <div class="input-row">
+                    <label for="outputVoltage">Выходное напряжение,(В):</label>
+                    <input type="number" id="outputVoltage" min="219" max="240" step="1" value="230">
+                </div>  
+                <div class="input-row">
+                    <label for="maxCurrentDifference">Макс. разница тока нагрузки,(А):</label>
+                    <input type="number" id="maxCurrentDifference" min="3" max="15" step="1" value="5">
+                </div>
                 <!-- Таблица с фазами -->
                 <h3>Данные по фазам</h3>
                 <table class="phase-table">
@@ -96,7 +105,7 @@
                 <p>Общая мощность нагрузки, КВт: <span id="total_load">0</span></p>
                  <!-- Кнопка Сохранить -->
                  <button id="saveLoadSettings" onclick="saveLoadSettings()">Сохранить</button>
-                 <div id="confirmationMessage" style="margin-top: 10px; color: rgb(11, 226, 11); display: none;"></div>
+                 <div id="loadConfirmationMessage" style="margin-top: 10px; color: rgb(11, 226, 11); display: none;"></div>
             </div>
         </div>
 
@@ -516,9 +525,9 @@
     }
 
     // Закрытие модального окна (если нужно)
-    document.getElementById("closeLoadModal").onclick = function() {
-        document.getElementById("loadModal").style.display = "none";
-    }
+    //document.getElementById("closeLoadModal").onclick = function() {
+      //  document.getElementById("loadModal").style.display = "none";
+  //  }
 </script>
 
 <script>

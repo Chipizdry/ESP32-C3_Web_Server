@@ -1130,7 +1130,7 @@ esp_err_t save_wifi_settings_handler(httpd_req_t *req) {
 
 // Обработчик для POST-запросов
 esp_err_t post_handler(httpd_req_t *req) {
-    char buf[100];
+    char buf[200];  // Увеличиваем размер буфера для дополнительных параметров
     int ret, remaining = req->content_len;
 
     if (remaining > sizeof(buf) - 1) {
@@ -1149,61 +1149,90 @@ esp_err_t post_handler(httpd_req_t *req) {
 
     buf[ret] = '\0';
     ESP_LOGI(TAG, "Received POST data: %s", buf);
-     uart_command_t cmd;
-     if (ret > 0) {
-    buf[ret] = 0;  // Завершаем строку
-
     
+    uart_command_t cmd;
+    
+    // Проверяем, что запрос содержит данные
+    if (ret > 0) {
+        buf[ret] = 0;  // Завершаем строку
 
-    // Находим параметры в теле запроса
-    char *lowThreshold = strstr(buf, "lowThreshold=");
-    char *highThreshold = strstr(buf, "highThreshold=");
-    char *maxCurrentRange= strstr(buf, "maxCurrentRange=");
-    // Проверяем, что параметры найдены
-    if (lowThreshold && highThreshold) {
-		cmd.command = 3;  // Команда для настройки батареи
-      // Извлекаем значение после ключа и преобразуем его в float
-			float low = atof(lowThreshold + strlen("lowThreshold="));	
-			// Преобразуем значение в uint16_t и сохраняем в два байта
-			uint16_t low_value = (uint16_t)(low * 10);  // Пример кодирования значения с точностью до 0.1
-			
-			// Сохраняем старший и младший байты в payload
-			cmd.payload[0] = (low_value >> 8) & 0xFF;  // Старший байт
-			cmd.payload[1] = low_value & 0xFF;         // Младший байт
-			cmd.payload_len = 2;  // Используем два байта для одного значения
-			
-			// Аналогично для highThreshold
-			float high = atof(highThreshold + strlen("highThreshold="));
-			uint16_t high_value = (uint16_t)(high * 10);  // Пример кодирования значения с точностью до 0.1
-			
-			// Сохраняем старший и младший байты в payload
-			cmd.payload[2] = (high_value >> 8) & 0xFF;  // Старший байт
-			cmd.payload[3] = high_value & 0xFF;         // Младший байт
-						
-	    	float maxCurrent= atof(maxCurrentRange + strlen("maxCurrentRange="));
-		    uint16_t current_value = (uint16_t)(maxCurrent* 10);
-		    // Сохраняем старший и младший байты в payload
-			cmd.payload[4] = (current_value >> 8) & 0xFF;  // Старший байт
-			cmd.payload[5] = current_value & 0xFF;         // Младший байт	
-			cmd.payload_len = 6;  // Используем четыре байта для двух значений
-              
-        // Логируем значения
-        ESP_LOGI(TAG, "Low Threshold: %.2f, High Threshold: %.2f", low, high);
+        // Находим параметры для батареи в теле запроса
+        char *lowThreshold = strstr(buf, "lowThreshold=");
+        char *highThreshold = strstr(buf, "highThreshold=");
+        char *maxCurrentRange = strstr(buf, "maxCurrentRange=");
+
+        // Проверяем наличие параметров для батареи
+        if (lowThreshold && highThreshold && maxCurrentRange) {
+            cmd.command = 3;  // Команда для настройки батареи
+
+            // Извлекаем значения и преобразуем их в float
+            float low = atof(lowThreshold + strlen("lowThreshold="));	
+            float high = atof(highThreshold + strlen("highThreshold="));
+            float maxCurrent = atof(maxCurrentRange + strlen("maxCurrentRange="));
+
+            // Кодируем параметры в uint16_t с точностью до 0.1
+            uint16_t low_value = (uint16_t)(low * 10);
+            uint16_t high_value = (uint16_t)(high * 10);
+            uint16_t current_value = (uint16_t)(maxCurrent * 10);
+
+            // Заполняем payload данными
+            cmd.payload[0] = (low_value >> 8) & 0xFF;  // Старший байт lowThreshold
+            cmd.payload[1] = low_value & 0xFF;         // Младший байт lowThreshold
+            cmd.payload[2] = (high_value >> 8) & 0xFF;  // Старший байт highThreshold
+            cmd.payload[3] = high_value & 0xFF;         // Младший байт highThreshold
+            cmd.payload[4] = (current_value >> 8) & 0xFF;  // Старший байт maxCurrentRange
+            cmd.payload[5] = current_value & 0xFF;         // Младший байт maxCurrentRange
+            cmd.payload_len = 6;
+
+            // Логируем полученные данные
+            ESP_LOGI(TAG, "Battery settings - Low: %.2f, High: %.2f, Max Current: %.2f",
+                     low, high, maxCurrent);
+        }
+        
+        // Находим параметры для настройки нагрузки
+        char *maxLoad = strstr(buf, "maxLoad=");
+        char *outputVoltage = strstr(buf, "outputVoltage=");
+        char *maxCurrentDifference = strstr(buf, "maxCurrentDifference=");
+
+        // Проверяем наличие параметров для нагрузки
+        if (maxLoad && outputVoltage && maxCurrentDifference) {
+            cmd.command = 4;  // Команда для настройки нагрузки
+
+            // Извлекаем значения и преобразуем их в float
+            float load = atof(maxLoad + strlen("maxLoad="));
+            float voltage = atof(outputVoltage + strlen("outputVoltage="));
+            float currentDiff = atof(maxCurrentDifference + strlen("maxCurrentDifference="));
+
+            // Кодируем параметры в uint16_t с точностью до 0.1
+            uint16_t load_value = (uint16_t)(load * 10);
+            uint16_t voltage_value = (uint16_t)(voltage * 10);
+            uint16_t current_diff_value = (uint16_t)(currentDiff * 10);
+
+            // Заполняем payload данными
+            cmd.payload[0] = (load_value >> 8) & 0xFF;      // Старший байт maxLoad
+            cmd.payload[1] = load_value & 0xFF;             // Младший байт maxLoad
+            cmd.payload[2] = (voltage_value >> 8) & 0xFF;   // Старший байт outputVoltage
+            cmd.payload[3] = voltage_value & 0xFF;          // Младший байт outputVoltage
+            cmd.payload[4] = (current_diff_value >> 8) & 0xFF;  // Старший байт maxCurrentDifference
+            cmd.payload[5] = current_diff_value & 0xFF;         // Младший байт maxCurrentDifference
+            cmd.payload_len = 6;
+
+            // Логируем полученные данные
+            ESP_LOGI(TAG, "Load settings - Max Load: %.2f, Output Voltage: %.2f, Max Current Difference: %.2f",
+                     load, voltage, currentDiff);
+        }
+
     } else {
-        ESP_LOGW(TAG, "Failed to find thresholds in the POST data");
+        ESP_LOGE(TAG, "Failed to receive POST data");
+        return ESP_FAIL;
     }
-    
-    
-} else {
-    ESP_LOGE(TAG, "Failed to receive POST data");
-}
    
-   // Отправляем команду в очередь UART
+    // Отправляем команду в очередь UART
     if (xQueueSend(uart_queue, &cmd, 0) != pdPASS) {
         ESP_LOGW(TAG, "Failed to send command to UART queue");
     }
+
     // Отправляем успешный ответ
-   // httpd_resp_send(req, "POST data received", HTTPD_RESP_USE_STRLEN);
     httpd_resp_send(req, "Настройки успешно сохранены", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
