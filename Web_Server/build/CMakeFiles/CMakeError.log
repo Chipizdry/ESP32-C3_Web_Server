@@ -1,0 +1,9 @@
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: G:/Espressif/tools/riscv32-esp-elf/esp-13.2.0_20230928/riscv32-esp-elf/bin/riscv32-esp-elf-gcc.exe 
+Build flags: -march=rv32imc_zicsr_zifencei;
+Id flags:  
+
+The output was:
+Access violation
+
+

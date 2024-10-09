@@ -100,6 +100,7 @@ device_settings_t default_settings = {
 
 // Структура для передачи данных через очередь
 typedef struct {
+	uint8_t cmd_type;
     uint8_t command;
     uint8_t payload[10];  // Полезная нагрузка, максимальная длина 10 байт
     uint8_t payload_len;
@@ -142,7 +143,7 @@ uint16_t calcCRC16(uint8_t *buffer, uint8_t u8length) {
 }
 
 // Функция для формирования запроса
-uint16_t form_tuya_request(uint8_t command, uint8_t *payload, uint16_t payload_len, uint8_t *request) {
+uint16_t form_tuya_request(uint8_t cmd_type, uint8_t command, uint8_t *payload, uint16_t payload_len, uint8_t *request) {
     uint16_t pos = 0;
 
     // 1. Заголовок (2 байта)
@@ -153,7 +154,7 @@ uint16_t form_tuya_request(uint8_t command, uint8_t *payload, uint16_t payload_l
                     //         0x01 для команд
                     //         0x02 для файлов прошивки
               
-    request[pos++] = 0x00;
+    request[pos++] =cmd_type;
 
     // 3. Идентификатор команды (1 байт)
     request[pos++] = command;
@@ -195,8 +196,8 @@ void init_uart() {
     uart_set_pin(uart_num, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
     // Устанавливаем драйвер UART с размером буфера RX/TX
-    int rx_buffer_size = 256;
-    int tx_buffer_size = 256;
+    int rx_buffer_size =128;
+    int tx_buffer_size =128;
     uart_driver_install(uart_num, rx_buffer_size, tx_buffer_size, 0, NULL, 0);
 }
     
@@ -205,6 +206,7 @@ void init_uart() {
 void periodic_request_task(void *pvParameters) {
     while (1) {
         uart_command_t cmd;
+        cmd.cmd_type=0;
         cmd.command = COMMAND_REGULAR_REQUEST;  // Регулярный запрос данных
         cmd.payload_len = 0;  // Нет полезной нагрузки для регулярного запроса
 
@@ -228,7 +230,7 @@ void uart_command_task(void *pvParameters) {
         // Ожидаем запрос из очереди
         if (xQueueReceive(uart_queue, &cmd, portMAX_DELAY) == pdPASS) {
             // Формируем запрос
-            request_len = form_tuya_request(cmd.command, cmd.payload, cmd.payload_len, request);
+            request_len = form_tuya_request(cmd.cmd_type,cmd.command, cmd.payload, cmd.payload_len, request);
 
                    // Логируем запрос в формате HEX перед отправкой
             ESP_LOGI(TAG, "Sending command %d via UART, request length: %d", cmd.command, request_len);
@@ -1163,6 +1165,7 @@ esp_err_t post_handler(httpd_req_t *req) {
 
         // Проверяем наличие параметров для батареи
         if (lowThreshold && highThreshold && maxCurrentRange) {
+			cmd.cmd_type=1;
             cmd.command = 3;  // Команда для настройки батареи
 
             // Извлекаем значения и преобразуем их в float
@@ -1196,6 +1199,7 @@ esp_err_t post_handler(httpd_req_t *req) {
 
         // Проверяем наличие параметров для нагрузки
         if (maxLoad && outputVoltage && maxCurrentDifference) {
+			cmd.cmd_type=1;
             cmd.command = 4;  // Команда для настройки нагрузки
 
             // Извлекаем значения и преобразуем их в float
