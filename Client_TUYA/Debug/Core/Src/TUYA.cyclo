@@ -1,0 +1,6 @@
+../Core/Src/TUYA.c:11:6:HAL_UART_IDLECallback	2
+../Core/Src/TUYA.c:26:10:calcCRC16	4
+../Core/Src/TUYA.c:48:6:send_updated_data	1
+../Core/Src/TUYA.c:88:6:process_received_data	13
+../Core/Src/TUYA.c:195:6:HAL_UART_TxCpltCallback	2
+../Core/Src/TUYA.c:206:6:send_response	1

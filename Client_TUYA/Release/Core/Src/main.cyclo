@@ -1,0 +1,5 @@
+../Core/Src/main.c:112:6:I2C_send	2
+../Core/Src/main.c:134:6:LCD_SendString	2
+../Core/Src/main.c:392:6:SystemClock_Config	3
+../Core/Src/main.c:150:5:main	62
+../Core/Src/main.c:903:6:Error_Handler	1
