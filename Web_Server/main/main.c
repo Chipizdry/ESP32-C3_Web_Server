@@ -18,6 +18,7 @@
 #include "esp_err.h"
 #include "esp_mac.h"
 #include "esp_mac.h"
+#include "hal/uart_types.h"
 #include "nvs.h"
 #include "driver/uart.h"
 //#include "driver/gpio.h"
@@ -53,7 +54,7 @@
 #define UART_PORT_NUM      UART_NUM_1
 #define UART_BAUD_RATE     9600
 #define UART_BUF_SIZE      (1024)
-
+#define RX_BUFFER_SIZE 32
 #define HEADER_1 0x55
 #define HEADER_2 0xAA
 
@@ -117,7 +118,15 @@ typedef struct {
     int signal_strength; // Сигнал (RSSI)
 } sensor_data_t;
 
-static QueueHandle_t uart_queue;
+static QueueHandle_t uart_command_queue;
+static QueueHandle_t uart_event_queue;
+// Объявляем мьютекс
+SemaphoreHandle_t uart_mutex;
+
+uint8_t rx_buffer[RX_BUFFER_SIZE];
+// Прототипы функций
+void process_received_data(uint8_t *data, int len);
+
 
 
 uint16_t calcCRC16(uint8_t *buffer, uint8_t u8length) {
@@ -179,7 +188,7 @@ uint16_t form_tuya_request(uint8_t cmd_type, uint8_t command, uint8_t *payload, 
 
 
 void init_uart() {
-    const uart_port_t uart_num = UART_NUM_1; // Используем UART1 (или другой доступный UART)
+    const uart_port_t uart_num = UART_NUM_1;
 
     uart_config_t uart_config = {
         .baud_rate = 115200,
@@ -189,38 +198,88 @@ void init_uart() {
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
     };
 
-    // Настраиваем параметры UART
     uart_param_config(uart_num, &uart_config);
-
-    // Указываем пины для TX и RX (проверьте правильность пинов)
     uart_set_pin(uart_num, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
-    // Устанавливаем драйвер UART с размером буфера RX/TX
-    int rx_buffer_size =128;
-    int tx_buffer_size =128;
-    uart_driver_install(uart_num, rx_buffer_size, tx_buffer_size, 0, NULL, 0);
+    int rx_buffer_size = 1024;
+    int tx_buffer_size = 1024;
+    esp_err_t uart_err = uart_driver_install(UART_NUM_1, rx_buffer_size, tx_buffer_size, 20, &uart_event_queue, 0);
+		if (uart_err != ESP_OK) {
+		    ESP_LOGE(TAG, "Failed to install UART driver: %s", esp_err_to_name(uart_err));
+		}
+   
 }
     
-    
-// Задача, которая каждые 1с добавляет запрос в очередь
-void periodic_request_task(void *pvParameters) {
+
+// Задача для обработки событий UART (например, прием данных)
+void uart_event_task(void *pvParameters) {
+    uart_event_t event;
+    uint8_t *data = (uint8_t *)malloc(RX_BUFFER_SIZE);
+     if (data == NULL) {
+       ESP_LOGE(TAG, "Failed to allocate memory for data buffer");
+    return; // Выход из функции, если память не выделена
+       }
+    size_t len = 0;  // Изменение типа переменной на size_t
+
     while (1) {
-        uart_command_t cmd;
-        cmd.cmd_type=0;
-        cmd.command = COMMAND_REGULAR_REQUEST;  // Регулярный запрос данных
-        cmd.payload_len = 0;  // Нет полезной нагрузки для регулярного запроса
+        // Ожидание событий UART
+        if (xQueueReceive(uart_event_queue, (void *)&event, portMAX_DELAY)) {
+            switch (event.type) {
+                case UART_DATA:
+                    // Принятое количество байт
+                    uart_get_buffered_data_len(UART_NUM_1, &len);
+                    len = uart_read_bytes(UART_NUM_1, data, RX_BUFFER_SIZE, pdMS_TO_TICKS(100));
+                    ESP_LOGI(TAG, "Received data: %d bytes", len);
+                    process_received_data(data, len);  // Обработка данных
+                    break;
 
-        // Отправляем запрос в очередь
-        if (xQueueSend(uart_queue, &cmd, 0) != pdPASS) {
-            ESP_LOGW(TAG, "Failed to send regular request to queue");
+                case UART_FIFO_OVF:
+                    ESP_LOGW(TAG, "UART FIFO Overflow");
+                    uart_flush_input(UART_NUM_1);
+                    xQueueReset(uart_event_queue);
+                    break;
+
+                case UART_BUFFER_FULL:
+                    ESP_LOGW(TAG, "UART Buffer Full");
+                    uart_flush_input(UART_NUM_1);
+                    xQueueReset(uart_event_queue);
+                    break;
+
+                default:
+                    ESP_LOGW(TAG, "Unknown UART event type: %d", event.type);
+                    break;
+            }
         }
-
-        // Ожидание 1 секунду перед отправкой следующего запроса
-        vTaskDelay(pdMS_TO_TICKS(1000));
     }
-}	
-	
-	// Задача отправки запросов и команд через UART
+
+    free(data);
+    vTaskDelete(NULL);
+}
+
+ 
+ // Функция обработки принятых данных
+void process_received_data(uint8_t *data, int len) {
+    ESP_LOGI(TAG, "Processing received data: %.*s", len, data);
+    // Добавьте здесь логику для парсинга данных
+}
+
+// Периодическая отправка регулярных запросов
+void periodic_request_task(void *pvParameters) {
+    uart_command_t cmd;
+    while (1) {
+        cmd.cmd_type = 0;
+        cmd.command = COMMAND_REGULAR_REQUEST;
+        cmd.payload_len = 0;
+
+        // Отправка регулярного запроса в очередь команд
+        if (xQueueSend(uart_command_queue, &cmd, 0) != pdPASS) {
+            ESP_LOGW(TAG, "Failed to send regular request");
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));  // Периодическое ожидание 1 секунду
+    }
+}
+
+// Задача для отправки команд через UART
 void uart_command_task(void *pvParameters) {
     uart_command_t cmd;
     uint8_t request[64];
@@ -228,22 +287,38 @@ void uart_command_task(void *pvParameters) {
 
     while (1) {
         // Ожидаем запрос из очереди
-        if (xQueueReceive(uart_queue, &cmd, portMAX_DELAY) == pdPASS) {
+        if (xQueueReceive(uart_command_queue, &cmd, portMAX_DELAY) == pdPASS) {
             // Формируем запрос
-            request_len = form_tuya_request(cmd.cmd_type,cmd.command, cmd.payload, cmd.payload_len, request);
+            request_len = form_tuya_request(cmd.cmd_type, cmd.command, cmd.payload, cmd.payload_len, request);
 
-                   // Логируем запрос в формате HEX перед отправкой
+            // Логируем запрос
             ESP_LOGI(TAG, "Sending command %d via UART, request length: %d", cmd.command, request_len);
             ESP_LOG_BUFFER_HEX(TAG, request, request_len);
 
 
-            // Отправляем запрос через UART
-            uart_write_bytes(UART_NUM_1, (const char *)request, request_len);
-          
+           size_t buffered_size;
+				uart_get_buffered_data_len(UART_NUM_1, &buffered_size);
+				ESP_LOGI(TAG, "Buffered data size: %d", buffered_size);
+				
+				if (buffered_size > 128) {
+				    ESP_LOGW(TAG, "Buffer overflow: %d bytes buffered", buffered_size);
+				    uart_flush_input(UART_NUM_1);  // Сброс буфера
+				}
+
+            // Используем мьютекс для доступа к UART
+            if (xSemaphoreTake(uart_mutex, portMAX_DELAY)) {
+                int res = uart_write_bytes(UART_NUM_1, (const char *)request, request_len);
+                if (res < 0) {
+                    ESP_LOGE(TAG, "Failed to write bytes to UART");
+                }
+                xSemaphoreGive(uart_mutex);  // Освобождаем доступ к UART
+            } else {
+                ESP_LOGE(TAG, "Failed to take UART mutex");
+            }
         }
     }
 }
-	
+
 void init_nvs() {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -1231,8 +1306,9 @@ esp_err_t post_handler(httpd_req_t *req) {
         return ESP_FAIL;
     }
    
-    // Отправляем команду в очередь UART
-    if (xQueueSend(uart_queue, &cmd, 0) != pdPASS) {
+   
+     // Отправляем команду в очередь UART
+    if (xQueueSend(uart_command_queue, &cmd, 0) != pdPASS) {
         ESP_LOGW(TAG, "Failed to send command to UART queue");
     }
 
@@ -1505,20 +1581,26 @@ void app_main(void) {
     save_settings_to_nvs(&current_settings);
     // Запуск веб-сервера
     start_webserver();
+    
+    // Инициализация мьютекса
+    uart_mutex = xSemaphoreCreateMutex();
+    if (uart_mutex == NULL) {
+        ESP_LOGE(TAG, "Failed to create UART mutex");
+        return;  // Обработка ошибки
+    }
  
    init_uart();
-      // Создаем очередь команд
-    uart_queue = xQueueCreate(QUEUE_SIZE, sizeof(uart_command_t));
-    if(uart_queue == NULL) {
-        ESP_LOGE(TAG, "Failed to create queue");
-        return;
-    }
-       xTaskCreate(wifi_signal_strength_task, "wifi_signal_strength_task", 2048, NULL, 5, NULL);
-   // Создаем задачу для регулярного запроса данных каждые 1с
-    xTaskCreate(periodic_request_task, "periodic_request_task", 2048, NULL, 5, NULL);
+   
+	 // Создание очередей
+    uart_command_queue = xQueueCreate(10, sizeof(uart_command_t));
+    uart_event_queue = xQueueCreate(10, sizeof(uart_event_t));
 
-    // Создаем задачу для отправки команд по UART
+    // Создание задач
+    xTaskCreate(wifi_signal_strength_task, "wifi_signal_strength_task", 2048, NULL, 5, NULL);
+    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 10, NULL);
     xTaskCreate(uart_command_task, "uart_command_task", 2048, NULL, 5, NULL);
-
+    xTaskCreate(periodic_request_task, "periodic_request_task", 2048, NULL, 5, NULL);
+    
+    
 }
 
