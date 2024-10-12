@@ -88,6 +88,7 @@ char info_buffer[20]= { 0 };
 
      uint16_t adc=0;
     uint8_t update_data=0;
+    uint8_t cmd_in=0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -181,6 +182,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  LED_1_ON;
   I2C_send(0b00110000,0);   // 8ми битный интерфейс
    I2C_send(0b00000010,0);   // установка курсора в начале строки
    I2C_send(0b00001100,0);   // нормальный режим работы
@@ -197,10 +199,10 @@ int main(void)
      HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 
      // Запускаем прием по DMA с буфером для приема данных
-       HAL_UART_Receive_DMA(&huart1, rx_buffer, RX_BUFFER_SIZE);
-
-       // Включаем прерывание по флагу IDLE для отслеживания завершения приема данных
+     HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
        __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+       __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
+
 
   /* USER CODE END 2 */
 
@@ -239,7 +241,7 @@ int main(void)
 		  I2C_send(0b10000000,0);   // переход на 1 строку
 		  LCD_SendString("RUN MODE-           ");
 		  I2C_send(0b11000000,0);   // переход на 2 строку
-		  sprintf(info_buffer,"Turns=%04d      ",turns);
+		  sprintf(info_buffer,"Turns=%04d      ",cmd_in);
 		  LCD_SendString(info_buffer);
 		  FORVARD;
 		  I2C_send(0b10010100,0);   // переход на 3 строку
@@ -843,14 +845,25 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, BUZZ_Pin|DIRECTION_2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, STOP_2_Pin|STOP_DRIVER_Pin|DIRECTION_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : LED_Pin */
+  GPIO_InitStruct.Pin = LED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BUZZ_Pin DIRECTION_2_Pin */
   GPIO_InitStruct.Pin = BUZZ_Pin|DIRECTION_2_Pin;

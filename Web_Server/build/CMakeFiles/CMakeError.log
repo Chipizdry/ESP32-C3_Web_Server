@@ -1,9 +1,11 @@
-Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
-Compiler: G:/Espressif/tools/riscv32-esp-elf/esp-13.2.0_20230928/riscv32-esp-elf/bin/riscv32-esp-elf-gcc.exe 
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+Compiler: G:/Espressif/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/bin/riscv32-esp-elf-g++.exe 
 Build flags: -march=rv32imc_zicsr_zifencei;
 Id flags:  
 
 The output was:
-Access violation
+1
+riscv32-esp-elf-g++.exe: fatal error: cannot execute 'G:/Espressif/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/bin/../lib/gcc/riscv32-esp-elf/13.2.0/../../../../riscv32-esp-elf/bin/as.exe': CreateProcess: No such file or directory
+compilation terminated.
 
 

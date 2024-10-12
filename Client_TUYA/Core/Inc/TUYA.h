@@ -20,10 +20,11 @@
 extern uint8_t rx_buffer[RX_BUFFER_SIZE];
 extern uint8_t tx_buffer[TX_BUFFER_SIZE];
 extern uint8_t update_data;
+extern uint8_t cmd_in;
 extern UART_HandleTypeDef huart1;  // Объявляем huart1 как внешнюю переменную
 // Инициализация UART с DMA
 void UART_DMA_Init(UART_HandleTypeDef *huart, DMA_HandleTypeDef *hdma_tx, DMA_HandleTypeDef *hdma_rx);
-
+extern DMA_HandleTypeDef hdma_usart1_rx;
 // Обработка полученных данных
 void process_received_data(uint8_t *data, uint16_t length);
 

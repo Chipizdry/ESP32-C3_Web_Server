@@ -35,6 +35,8 @@ extern "C" {
 
 #define REVERS     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15,GPIO_PIN_SET);
 #define FORVARD    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15,GPIO_PIN_RESET);
+#define LED_1_ON   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13,GPIO_PIN_SET);
+#define LED_1_OFF  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13,GPIO_PIN_RESET);
 
 /* USER CODE END Includes */
 
@@ -63,6 +65,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define LED_Pin GPIO_PIN_13
+#define LED_GPIO_Port GPIOC
 #define Counter_2_Pin GPIO_PIN_0
 #define Counter_2_GPIO_Port GPIOA
 #define INP_1_Pin GPIO_PIN_3

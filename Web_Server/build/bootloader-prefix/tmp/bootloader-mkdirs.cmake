@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 file(MAKE_DIRECTORY
-  "G:/Espressif/frameworks/esp-idf-v5.2.2/components/bootloader/subproject"
+  "G:/Espressif/frameworks/esp-idf-v5.3.1/components/bootloader/subproject"
   "C:/Work/Espressif_work/Web_Server/build/bootloader"
   "C:/Work/Espressif_work/Web_Server/build/bootloader-prefix"
   "C:/Work/Espressif_work/Web_Server/build/bootloader-prefix/tmp"

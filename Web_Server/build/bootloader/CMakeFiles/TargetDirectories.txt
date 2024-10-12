@@ -6,6 +6,7 @@ C:/Work/Espressif_work/Web_Server/build/bootloader/CMakeFiles/app.dir
 C:/Work/Espressif_work/Web_Server/build/bootloader/CMakeFiles/erase_flash.dir
 C:/Work/Espressif_work/Web_Server/build/bootloader/CMakeFiles/uf2.dir
 C:/Work/Espressif_work/Web_Server/build/bootloader/CMakeFiles/uf2-app.dir
+C:/Work/Espressif_work/Web_Server/build/bootloader/CMakeFiles/merge-bin.dir
 C:/Work/Espressif_work/Web_Server/build/bootloader/CMakeFiles/monitor.dir
 C:/Work/Espressif_work/Web_Server/build/bootloader/CMakeFiles/_project_elf_src.dir
 C:/Work/Espressif_work/Web_Server/build/bootloader/CMakeFiles/bootloader.elf.dir
@@ -58,6 +59,8 @@ C:/Work/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_hw_support/CMakeF
 C:/Work/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_hw_support/CMakeFiles/rebuild_cache.dir
 C:/Work/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_hw_support/port/esp32c3/CMakeFiles/edit_cache.dir
 C:/Work/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_hw_support/port/esp32c3/CMakeFiles/rebuild_cache.dir
+C:/Work/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_hw_support/lowpower/CMakeFiles/edit_cache.dir
+C:/Work/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_hw_support/lowpower/CMakeFiles/rebuild_cache.dir
 C:/Work/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_common/CMakeFiles/__idf_esp_common.dir
 C:/Work/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_common/CMakeFiles/edit_cache.dir
 C:/Work/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_common/CMakeFiles/rebuild_cache.dir

@@ -300,7 +300,7 @@ void uart_command_task(void *pvParameters) {
 				uart_get_buffered_data_len(UART_NUM_1, &buffered_size);
 				ESP_LOGI(TAG, "Buffered data size: %d", buffered_size);
 				
-				if (buffered_size > 128) {
+				if (buffered_size > 256) {
 				    ESP_LOGW(TAG, "Buffer overflow: %d bytes buffered", buffered_size);
 				    uart_flush_input(UART_NUM_1);  // Сброс буфера
 				}
@@ -1071,7 +1071,8 @@ while (boundary_pos) {
         // Выводим двоичные данные
       //  ESP_LOG_BUFFER_HEX(TAG, data_start, data_length);  // Выводим двоичные данные в лог
            // Проверка инициализации OTA
-            if (ota_handle == NULL) {
+          //  if (ota_handle == NULL) { 
+            if (ota_handle ==0) {
             ESP_LOGE(TAG, "OTA handle is null, something went wrong with esp_ota_begin.");
               return ESP_FAIL;}
 
@@ -1522,10 +1523,6 @@ httpd_handle_t start_webserver(void) {
 
     return server;
 }
-
-
-
-
 
 void app_main(void) {
 	 

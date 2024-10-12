@@ -1,0 +1,10 @@
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+Compiler: G:/Espressif/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/bin/riscv32-esp-elf-g++.exe 
+Build flags: -march=rv32imc_zicsr_zifencei;
+Id flags:  
+
+The output was:
+1
+collect2.exe: error: ld returned 5 exit status
+
+
