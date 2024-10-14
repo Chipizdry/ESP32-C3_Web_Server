@@ -21,7 +21,7 @@
 #include "hal/uart_types.h"
 #include "nvs.h"
 #include "driver/uart.h"
-//#include "driver/gpio.h"
+#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -58,6 +58,7 @@
 #define HEADER_1 0x55
 #define HEADER_2 0xAA
 
+#define RESET_PIN GPIO_NUM_0  // Выберите нужный пин, например, GPIO 0
 // Определяем командные коды
 #define COMMAND_REGULAR_REQUEST 0x01  // Команда для регулярного запроса данных
 #define COMMAND_FRONTEND 0x02         // Команда от фронтэнда
@@ -97,6 +98,8 @@ device_settings_t default_settings = {
     .speed_limit = 1500,
     .wifi_ssid = "Medical",
     .wifi_password = "0445026833"
+  //  .wifi_ssid  = "TP-Link_FA4F",
+  //  .wifi_password = "19481555"
 };
 
 // Структура для передачи данных через очередь
@@ -126,6 +129,34 @@ SemaphoreHandle_t uart_mutex;
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 // Прототипы функций
 void process_received_data(uint8_t *data, int len);
+void reset_to_factory_settings();
+
+// Инициализация пина для сброса
+void init_reset_pin() {
+    gpio_config_t io_conf = {};
+    io_conf.intr_type = GPIO_INTR_DISABLE;  // Прерывания не нужны
+    io_conf.mode = GPIO_MODE_INPUT;         // Режим ввода
+    io_conf.pin_bit_mask = (1ULL << RESET_PIN); // Пин для отслеживания
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE; // Включаем внутреннюю подтяжку
+    gpio_config(&io_conf);
+}
+
+// Задача для отслеживания состояния пина
+void reset_task(void *arg) {
+    while (1) {
+        // Проверяем состояние пина
+        int pin_state = gpio_get_level(RESET_PIN);
+
+        // Если пин замкнут (например, на землю)
+        if (pin_state == 0) {
+            ESP_LOGI("RESET", "Reset pin activated. Resetting settings...");
+            reset_to_factory_settings();  // Вызываем функцию сброса настроек
+            esp_restart();  // Перезагружаем устройство
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));  // Проверяем каждые 100 мс
+    }
+}
+
 
 
 
@@ -330,53 +361,53 @@ void init_nvs() {
 
 
 
-esp_err_t save_settings_to_nvs(device_settings_t *settings) {
+esp_err_t save_settings_to_nvs(const device_settings_t *settings) {
     nvs_handle_t nvs_handle;
-    esp_err_t err;
-
-    // Открываем хранилище NVS для записи
-    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &nvs_handle);
+    esp_err_t err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
     if (err != ESP_OK) {
-        ESP_LOGE("NVS", "Error opening NVS: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Ошибка открытия NVS: %s", esp_err_to_name(err));
         return err;
     }
 
-    // Сохраняем настройки
-    err = nvs_set_blob(nvs_handle, "device_settings", settings, sizeof(*settings));
-    if (err == ESP_OK) {
-        err = nvs_commit(nvs_handle); } // Подтверждаем изменения
-    nvs_close(nvs_handle);  // Закрываем NVS
-    //ESP_LOGE(TAG, "settings successfully saved");
+    // Сохраняем всю структуру как blob (бинарные данные)
+    err = nvs_set_blob(nvs_handle, "device_settings", settings, sizeof(device_settings_t));
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Ошибка сохранения настроек в NVS: %s", esp_err_to_name(err));
+        nvs_close(nvs_handle);
+        return err;
+    }
+
+    // Подтверждаем изменения
+    err = nvs_commit(nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Ошибка подтверждения изменений в NVS: %s", esp_err_to_name(err));
+    }
+
+    nvs_close(nvs_handle);
     return err;
 }
 
 
+
 esp_err_t load_settings_from_nvs(device_settings_t *settings) {
     nvs_handle_t nvs_handle;
-    esp_err_t err;
-
-    // Открываем NVS для чтения
-    err = nvs_open(STORAGE_NAMESPACE, NVS_READONLY, &nvs_handle);
-    if (err == ESP_ERR_NVS_NOT_FOUND) {
-        // Если не найдены данные, используем настройки по умолчанию
-        memcpy(settings, &default_settings, sizeof(device_settings_t));
-        return ESP_ERR_NVS_NOT_FOUND;
-    } else if (err != ESP_OK) {
+    esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Ошибка открытия NVS: %s", esp_err_to_name(err));
         return err;
     }
 
-    // Получаем данные из NVS
-    size_t required_size;
-    err = nvs_get_blob(nvs_handle, "device_settings", NULL, &required_size);
-    if (err == ESP_OK && required_size == sizeof(device_settings_t)) {
-        err = nvs_get_blob(nvs_handle, "device_settings", settings, &required_size);
-    } else {
-        // Если данных нет, используем настройки по умолчанию
-        memcpy(settings, &default_settings, sizeof(device_settings_t));
+    size_t required_size = sizeof(device_settings_t);
+    err = nvs_get_blob(nvs_handle, "device_settings", settings, &required_size);
+    if (err == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGI(TAG, "Настройки не найдены, используем настройки по умолчанию");
+        memcpy(settings, &default_settings, sizeof(device_settings_t)); // Используем значения по умолчанию
         err = ESP_ERR_NVS_NOT_FOUND;
+    } else if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Ошибка при загрузке настроек из NVS: %s", esp_err_to_name(err));
     }
 
-    nvs_close(nvs_handle);  // Закрываем NVS
+    nvs_close(nvs_handle);
     return err;
 }
 
@@ -386,7 +417,6 @@ void setup_random() {
 }
 
 void list_files(const char *base_path);
-//static const char *TAG = "web_server";
 
 void wifi_signal_strength_task(void *pvParameters) {
     while (true) {
@@ -801,13 +831,13 @@ esp_err_t wifi_mode_handler(httpd_req_t *req) {
     // Закрытие NVS
     nvs_close(nvs_handle);
     ESP_LOGI(TAG, "NVS storage closed.");
-} else {
-    ESP_LOGE(TAG, "Failed to open NVS storage: %s", esp_err_to_name(err));
-}
-
-httpd_resp_send(req, "Wi-Fi mode updated", HTTPD_RESP_USE_STRLEN);
-return ESP_OK;
- 
+	} else {
+	    ESP_LOGE(TAG, "Failed to open NVS storage: %s", esp_err_to_name(err));
+	}
+	
+	httpd_resp_send(req, "Wi-Fi mode updated", HTTPD_RESP_USE_STRLEN);
+	return ESP_OK;
+	 
  
 }
 
@@ -854,7 +884,7 @@ void init_wifi_from_nvs() {
                 .password = "0445026833"
                 
               //   .ssid = "TP-Link_FA4F",
-              // .password = "19481555"
+               //  .password = "19481555"
             },
         };
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
@@ -870,6 +900,26 @@ void init_wifi_from_nvs() {
         esp_wifi_set_mode(WIFI_MODE_STA);
         esp_wifi_start();  // Start the STA mode
     }
+}
+
+
+// Функция для сброса настроек на заводские
+void reset_to_factory_settings() {
+    esp_err_t err;
+
+    // Очищаем NVS
+    err = nvs_flash_erase();  // Очищаем всю память NVS
+    if (err != ESP_OK) {
+        ESP_LOGE("NVS", "Error erasing NVS: %s", esp_err_to_name(err));
+    } else {
+        ESP_LOGI("NVS", "NVS erased successfully");
+    }
+
+    // Можно здесь также восстановить настройки по умолчанию, если требуется
+  //  memcpy(&current_settings, &default_settings, sizeof(device_settings_t));
+
+    // Применение сохраненных настроек (опционально)
+    save_settings_to_nvs(&default_settings);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1527,6 +1577,7 @@ httpd_handle_t start_webserver(void) {
 void app_main(void) {
 	 
      // Инициализация NVS
+     /*
     if (!nvs_initialized) {
         esp_err_t ret = nvs_flash_init();
         if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -1536,12 +1587,13 @@ void app_main(void) {
         ESP_ERROR_CHECK(ret);
         nvs_initialized = true;
     }
-
-
+    */
+    init_nvs();
+    init_reset_pin();
  // Загружаем настройки
     device_settings_t current_settings;
     load_settings_from_nvs(&current_settings);
-//  init_nvs();
+    
     
     // Инициализация TCP/IP стека
     if (!netif_initialized) {
@@ -1597,7 +1649,8 @@ void app_main(void) {
     xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 10, NULL);
     xTaskCreate(uart_command_task, "uart_command_task", 2048, NULL, 5, NULL);
     xTaskCreate(periodic_request_task, "periodic_request_task", 2048, NULL, 5, NULL);
-    
+      // Запуск задачи для отслеживания состояния пина
+    xTaskCreate(reset_task, "reset_task",2048, NULL,2, NULL);
     
 }
 
