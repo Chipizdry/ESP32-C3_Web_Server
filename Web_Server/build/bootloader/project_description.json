@@ -1,7 +1,7 @@
 {
     "version":            "1.1",
     "project_name":       "bootloader",
-    "project_version":    "v5.3.1-dirty",
+    "project_version":    "1",
     "project_path":       "G:/Espressif/frameworks/esp-idf-v5.3.1/components/bootloader/subproject",
     "idf_path":           "G:/Espressif/frameworks/esp-idf-v5.3.1",
     "build_dir":          "C:/Work/Espressif_work/Web_Server/build/bootloader",
@@ -11,7 +11,7 @@
     "app_elf":            "bootloader.elf",
     "app_bin":            "bootloader.bin",
     "build_type":         "flash_app",
-    "git_revision":       "v5.3.1-dirty",
+    "git_revision":       "HEAD-HASH-NOTFOUND",
     "target":             "esp32c3",
     "rev":                "",
     "min_rev":            "3",

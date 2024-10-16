@@ -369,6 +369,7 @@
 
        <!-- Контент вкладки Настройки -->
         <div id="settings" class="tabcontent">
+            <p>WIFI SSID: <span id="wifi_ssid_display">Loading...</span></p> 
             <p>Current IP: <span id="ip_address">Loading...</span></p>
             <p>Netmask: <span id="netmask">Loading...</span></p>
             <p>Gateway: <span id="gateway">Loading...</span></p>
@@ -960,7 +961,7 @@ function updateData() {
       setInterval(updateData, 500); 
         
         
-        
+  /*      
           function updateNetworkInfo() {
       fetch('/get_ip')
         .then(response => response.json())
@@ -983,7 +984,38 @@ function updateData() {
         .catch(error => console.error('Error fetching network info:', error));
     }
 
+*/
+    function updateNetworkInfo() {
+    fetch('/get_ip')
+        .then(response => {
+            console.log('Ответ от сервера:', response);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Полученные данные:', data);
+            // Обновляем базовые данные (IP, шлюз, маска)
+            document.getElementById('ip_address').textContent = data.ip;
+            document.getElementById('netmask').textContent = data.netmask;
+            document.getElementById('gateway').textContent = data.gateway;
+            document.getElementById('network_mode').textContent = data.mode;
+            document.getElementById('wifi_ssid_display').textContent = data.ssid;  
 
+
+            // Обработка в зависимости от режима
+            if (data.mode === 'AP') {
+               // document.getElementById('wifi_ssid').value = data.ssid;  // Установка SSID для режима AP
+                document.getElementById('wifi_password').value = data.password;  // Установка пароля
+                document.getElementById('switchToAPButton').disabled = true;
+                document.getElementById('switchToSTAButton').disabled = false;
+            } else if (data.mode === 'STA') {
+               // document.getElementById('wifi_ssid').value = data.ssid;  // Установка SSID точки доступа
+                document.getElementById('wifi_password').value = '';  // Пароль для STA не выводим
+                document.getElementById('switchToAPButton').disabled = false;
+                document.getElementById('switchToSTAButton').disabled = true;
+            }
+        })
+        .catch(error => console.error('Error fetching network info:', error));
+}
 
      
         // Функция для открытия модального окна подтверждения переключения режима

@@ -11,7 +11,7 @@
     "app_elf":            "Web_Server.elf",
     "app_bin":            "Web_Server.bin",
     "build_type":         "flash_app",
-    "git_revision":       "v5.3.1-dirty",
+    "git_revision":       "HEAD-HASH-NOTFOUND",
     "target":             "esp32c3",
     "rev":                "",
     "min_rev":            "3",

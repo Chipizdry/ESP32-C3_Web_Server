@@ -87,8 +87,11 @@ typedef struct {
     float max_current;  // Максимальный ток
     int voltage_limit;  // Пороговое напряжение
     int speed_limit;    // Ограничение скорости
-    char wifi_ssid[32]; // SSID Wi-Fi
-    char wifi_password[64]; // Пароль Wi-Fi
+    char wifi_ssid[16]; // SSID Wi-Fi
+    char wifi_password[16]; // Пароль Wi-Fi
+    char wifi_ap_ssid[16]; // SSID Wi-Fi
+    char wifi_ap_password[16]; // Пароль Wi-Fi
+    char  wifi_mode[8];
 } device_settings_t;
 
 // Значения по умолчанию для настроек
@@ -97,9 +100,10 @@ device_settings_t default_settings = {
     .voltage_limit = 12,
     .speed_limit = 1500,
     .wifi_ssid = "Medical",
-    .wifi_password = "0445026833"
-  //  .wifi_ssid  = "TP-Link_FA4F",
-  //  .wifi_password = "19481555"
+    .wifi_password = "0445026833",
+    .wifi_ap_ssid  = "TP-Link_FA4F",
+    .wifi_ap_password = "19481555",
+    .wifi_mode="STA"
 };
 
 // Структура для передачи данных через очередь
@@ -576,7 +580,7 @@ void check_and_stop_wifi() {
 		snprintf(unique_id, sizeof(unique_id), "%02X%02X%02X", mac[3], mac[4], mac[5]);
 		
 		// Формирование полного SSID
-		char ssid[32];
+		char ssid[16];
 		snprintf(ssid, sizeof(ssid), "%s%s", AP_SSID_PREFIX, unique_id);
 		
 		// Настройка Wi-Fi AP
@@ -702,17 +706,16 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
     }
 }
 
-
-
 esp_err_t get_ip_handler(httpd_req_t *req) {
-    char response[128];
+    char response[256];  //  буфер для ответа
     esp_netif_ip_info_t ip_info;
     wifi_mode_t mode;
+    wifi_config_t wifi_config;
     esp_err_t err = esp_wifi_get_mode(&mode);
-    
-     ESP_LOGI("IP_HANDLER", "Received request for URI: %s", req->uri);
-    
-    // Логируем заголовки запроса
+
+    ESP_LOGI("IP_HANDLER", "Received request for URI: %s", req->uri);
+
+    // Получаем User-Agent для логирования (можно удалить, если не требуется)
     size_t header_count = httpd_req_get_hdr_value_len(req, "User-Agent") + 1;
     if (header_count > 1) {
         char *header_value = malloc(header_count);
@@ -721,7 +724,6 @@ esp_err_t get_ip_handler(httpd_req_t *req) {
         }
         free(header_value);
     }
-
 
     if (err != ESP_OK) {
         ESP_LOGE("IP_HANDLER", "Failed to get Wi-Fi mode: %s", esp_err_to_name(err));
@@ -745,15 +747,33 @@ esp_err_t get_ip_handler(httpd_req_t *req) {
         return err;
     }
 
-    // Определяем режим работы
-    const char *mode_str = (mode == WIFI_MODE_STA) ? "STA" : "AP";
-
-   
-               // Формируем JSON-ответ с IP, маской, шлюзом и режимом работы
-    snprintf(response, sizeof(response),
-             "{\"ip\": \"" IPSTR "\", \"netmask\": \"" IPSTR "\", \"gateway\": \"" IPSTR "\", \"mode\": \"%s\"}",
-             IP2STR(&ip_info.ip), IP2STR(&ip_info.netmask), IP2STR(&ip_info.gw), mode_str);
-
+    // Получаем текущую конфигурацию Wi-Fi
+    err = esp_wifi_get_config((mode == WIFI_MODE_STA) ? WIFI_IF_STA : WIFI_IF_AP, &wifi_config);
+    if (err != ESP_OK) {
+        ESP_LOGE("IP_HANDLER", "Failed to get Wi-Fi config: %s", esp_err_to_name(err));
+        httpd_resp_send_500(req);
+        return err;
+    }
+      // Убедимся, что SSID завершен нулевым байтом
+    wifi_config.ap.ssid[sizeof(wifi_config.ap.ssid) - 1] = '\0';
+    wifi_config.sta.ssid[sizeof(wifi_config.sta.ssid) - 1] = '\0';
+    
+     // Логируем SSID и пароль
+    ESP_LOGI("IP_HANDLER", "Wi-Fi mode: %s", (mode == WIFI_MODE_AP) ? "AP" : "STA");
+    ESP_LOGI("IP_HANDLER", "SSID: %s", (mode == WIFI_MODE_AP) ? (char *)wifi_config.ap.ssid : (char *)wifi_config.sta.ssid);
+    
+  // Формируем ответ в зависимости от режима работы
+    if (mode == WIFI_MODE_AP) {
+        snprintf(response, sizeof(response),
+                 "{\"ip\": \"" IPSTR "\", \"netmask\": \"" IPSTR "\", \"gateway\": \"" IPSTR "\", \"mode\": \"AP\", \"ssid\": \"%s\", \"password\": \"%s\"}",
+                 IP2STR(&ip_info.ip), IP2STR(&ip_info.netmask), IP2STR(&ip_info.gw),
+                 (char *)wifi_config.ap.ssid, (char *)wifi_config.ap.password);
+    } else if (mode == WIFI_MODE_STA) {
+        snprintf(response, sizeof(response),
+                 "{\"ip\": \"" IPSTR "\", \"netmask\": \"" IPSTR "\", \"gateway\": \"" IPSTR "\", \"mode\": \"STA\", \"ssid\": \"%s\"}",
+                 IP2STR(&ip_info.ip), IP2STR(&ip_info.netmask), IP2STR(&ip_info.gw),
+                 (char *)wifi_config.sta.ssid);
+    }
 
     httpd_resp_set_type(req, "application/json");
     esp_err_t res = httpd_resp_send(req, response, strlen(response));
@@ -763,7 +783,6 @@ esp_err_t get_ip_handler(httpd_req_t *req) {
 
     return res;
 }
-
 
 esp_err_t wifi_mode_handler(httpd_req_t *req) {
     char buf[100];
@@ -786,94 +805,69 @@ esp_err_t wifi_mode_handler(httpd_req_t *req) {
     buf[ret] = '\0';
     ESP_LOGI(TAG, "Received Wi-Fi mode request: %s", buf);
 
-    // Определяем, какой режим был запрошен (например, "sta" или "ap")
-    
-  
+    // Загружаем текущие настройки из NVS
+    device_settings_t settings;
+    esp_err_t err = load_settings_from_nvs(&settings);
+    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGE(TAG, "Error loading settings: %s", esp_err_to_name(err));
+        httpd_resp_send_500(req);
+        return err;
+    }
+
+    // Определяем, какой режим был запрошен (например, "STA" или "AP")
     if (strstr(buf, "STA") != NULL) {
-		    
-        esp_wifi_set_mode(WIFI_MODE_STA);
         ESP_LOGI(TAG, "Switching to STA mode");
+        strncpy(settings.wifi_mode, "STA", sizeof(settings.wifi_mode));
+        esp_wifi_set_mode(WIFI_MODE_STA);
     } else if (strstr(buf, "AP") != NULL) {
-		
-        init_wifi_ap();  // Вызов функции настройки AP
         ESP_LOGI(TAG, "Switching to AP mode");
-    }
-
-   // Сохранение текущего режима Wi-Fi в NVS для будущего использования
-	nvs_handle_t nvs_handle;
-	esp_err_t err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
-	if (err == ESP_OK) {
-	    ESP_LOGI(TAG, "NVS storage opened successfully.");
-
-    // Определение режима Wi-Fi
-    if (strstr(buf, "STA") != NULL) {
-        ESP_LOGI(TAG, "Saving Wi-Fi mode: STA");
-        err = nvs_set_u8(nvs_handle, "wifi_mode", WIFI_MODE_STA);
+        strncpy(settings.wifi_mode, "AP", sizeof(settings.wifi_mode));
+        init_wifi_ap();  // Вызов функции настройки AP
     } else {
-        ESP_LOGI(TAG, "Saving Wi-Fi mode: AP");
-        err = nvs_set_u8(nvs_handle, "wifi_mode", WIFI_MODE_AP);
+        ESP_LOGW(TAG, "Unknown mode requested: %s", buf);
+        httpd_resp_send_500(req); // Неправильный запрос
+        return ESP_FAIL;
     }
 
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "Wi-Fi mode saved successfully.");
-    } else {
-        ESP_LOGE(TAG, "Error saving Wi-Fi mode to NVS: %s", esp_err_to_name(err));
+    // Сохраняем обновленные настройки в NVS
+    err = save_settings_to_nvs(&settings);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error saving settings to NVS: %s", esp_err_to_name(err));
+        httpd_resp_send_500(req);
+        return err;
     }
 
-    // Коммит изменений в NVS
-    err = nvs_commit(nvs_handle);
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "NVS commit successful.");
-    } else {
-        ESP_LOGE(TAG, "NVS commit failed: %s", esp_err_to_name(err));
-    }
-
-    // Закрытие NVS
-    nvs_close(nvs_handle);
-    ESP_LOGI(TAG, "NVS storage closed.");
-	} else {
-	    ESP_LOGE(TAG, "Failed to open NVS storage: %s", esp_err_to_name(err));
-	}
-	
-	httpd_resp_send(req, "Wi-Fi mode updated", HTTPD_RESP_USE_STRLEN);
-	return ESP_OK;
-	 
- 
+    httpd_resp_send(req, "Wi-Fi mode updated", HTTPD_RESP_USE_STRLEN);
+    esp_restart();
+    return ESP_OK;
 }
 
 
 void init_wifi_from_nvs() {
-    uint8_t wifi_mode = WIFI_MODE_STA;
-    nvs_handle_t nvs_handle;
-    esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_handle);
-
-    if (err == ESP_OK) {
-        // Reading the saved Wi-Fi mode from NVS
-        err = nvs_get_u8(nvs_handle, "wifi_mode", &wifi_mode);
-        nvs_close(nvs_handle);
-        
-        if (err == ESP_ERR_NVS_NOT_FOUND) {
-            ESP_LOGI(TAG, "Wi-Fi mode not found in NVS, defaulting to STA");
-        } else if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Error reading Wi-Fi mode from NVS: %s", esp_err_to_name(err));
-        }
-    } else {
-        ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(err));
+    device_settings_t settings;
+    esp_err_t err = load_settings_from_nvs(&settings);  // Загружаем настройки из NVS
+    if (err == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGI(TAG, "Настройки не найдены, используем настройки по умолчанию");
+        memcpy(&settings, &default_settings, sizeof(device_settings_t));  // Используем настройки по умолчанию
+    } else if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Ошибка при загрузке настроек из NVS: %s", esp_err_to_name(err));
+        return;
     }
 
-    // Apply the Wi-Fi mode based on the value from NVS
-    if (wifi_mode == WIFI_MODE_AP) {
-		ESP_LOGI(TAG, "Initializing Wi-Fi in AP mode");
-		
-		 // Регистрация обработчиков событий Wi-Fi для STA
+    // Применяем режим Wi-Fi из загруженных настроек
+    if (strcmp(settings.wifi_mode, "AP") == 0) {
+        ESP_LOGI(TAG, "Initializing Wi-Fi in AP mode");
+
+        // Регистрация обработчиков событий для AP
         esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL);
         esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL);
-	
-        init_wifi_ap();  // Initialize as Access Point
-       
+
+        // Инициализация в режиме точки доступа (AP)
+        init_wifi_ap();
     } else {
-		
-		 ESP_LOGI("app_main", "Initializing Wi-Fi in STA mode...");
+        ESP_LOGI(TAG, "Initializing Wi-Fi in STA mode");
+
+        // Создание интерфейса Wi-Fi в режиме STA
         esp_netif_create_default_wifi_sta();
         wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
         ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -882,26 +876,27 @@ void init_wifi_from_nvs() {
             .sta = {
                 .ssid = "Medical",
                 .password = "0445026833"
-                
-              //   .ssid = "TP-Link_FA4F",
-               //  .password = "19481555"
             },
         };
+
+        // Копируем SSID и пароль из настроек
+        strncpy((char*)wifi_config.sta.ssid, settings.wifi_ssid, sizeof(wifi_config.sta.ssid));
+        strncpy((char*)wifi_config.sta.password, settings.wifi_password, sizeof(wifi_config.sta.password));
+
+        ESP_LOGI(TAG, "Connecting to SSID: %s", settings.wifi_ssid);
+
+        // Настраиваем Wi-Fi в режиме STA
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
 
         // Регистрация обработчиков событий Wi-Fi для STA
         esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL);
         esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL);
-        
-       
-        
-        ESP_LOGI(TAG, "Initializing Wi-Fi in STA mode");
-        esp_wifi_set_mode(WIFI_MODE_STA);
-        esp_wifi_start();  // Start the STA mode
+
+        // Запуск Wi-Fi в режиме STA
+        esp_wifi_start();
     }
 }
-
 
 // Функция для сброса настроек на заводские
 void reset_to_factory_settings() {
@@ -921,60 +916,9 @@ void reset_to_factory_settings() {
     // Применение сохраненных настроек (опционально)
     save_settings_to_nvs(&default_settings);
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 const esp_partition_t *update_partition = NULL;
-
-esp_err_t start_ota() {
-    update_partition = esp_ota_get_next_update_partition(NULL);
-    if (update_partition == NULL) {
-        ESP_LOGE(TAG, "Failed to find OTA partition");
-        return ESP_FAIL;
-    }
-
-    // Начало OTA процесса
-    esp_err_t err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &ota_handle);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_ota_begin failed (%s)", esp_err_to_name(err));
-        return err;
-    }
-
-    ESP_LOGI(TAG, "OTA begin successful");
-    return ESP_OK;
-}
-
-void write_ota_chunk(const char *data, size_t len) {
-    if (ota_handle == 0) {
-        ESP_LOGE(TAG, "OTA handle is invalid. Did you call start_ota?");
-        return;
-    }
-
-    // Пишем полученный чанк данных в OTA
-    esp_err_t err = esp_ota_write(ota_handle, (const void *)data, len);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Error: esp_ota_write failed (%s)", esp_err_to_name(err));
-    } else {
-        ESP_LOGI(TAG, "OTA write chunk successful, chunk size: %d", len);
-    }
-}
-
-void end_ota() {
-    // Завершаем OTA
-    esp_err_t err = esp_ota_end(ota_handle);
-    if (err == ESP_OK) {
-        // Устанавливаем новый раздел как активный
-        err = esp_ota_set_boot_partition(update_partition);
-        if (err == ESP_OK) {
-            ESP_LOGI(TAG, "OTA update successful! Restarting...");
-            esp_restart();
-        } else {
-            ESP_LOGE(TAG, "esp_ota_set_boot_partition failed (%s)", esp_err_to_name(err));
-        }
-    } else {
-        ESP_LOGE(TAG, "esp_ota_end failed (%s)", esp_err_to_name(err));
-    }
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1577,33 +1521,15 @@ httpd_handle_t start_webserver(void) {
 void app_main(void) {
 	 
      // Инициализация NVS
-     /*
-    if (!nvs_initialized) {
-        esp_err_t ret = nvs_flash_init();
-        if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-            ESP_ERROR_CHECK(nvs_flash_erase());
-            ret = nvs_flash_init();
-        }
-        ESP_ERROR_CHECK(ret);
-        nvs_initialized = true;
-    }
-    */
     init_nvs();
     init_reset_pin();
- // Загружаем настройки
+    // Загружаем настройки
     device_settings_t current_settings;
     load_settings_from_nvs(&current_settings);
-    
-    
+     
     // Инициализация TCP/IP стека
     if (!netif_initialized) {
         ESP_ERROR_CHECK(esp_netif_init());
-        netif_initialized = true;
-    }
-
-    // Инициализация сетевых интерфейсов
-    if (!netif_initialized) {
-        initialize_netifs();
         netif_initialized = true;
     }
 
@@ -1616,8 +1542,8 @@ void app_main(void) {
 
     // Чтение сохраненного режима Wi-Fi из NVS
     ESP_LOGI("app_main", "Reading saved Wi-Fi mode from NVS...");
-  //  wifi_mode_t saved_mode = WIFI_MODE_STA;  // Здесь необходимо добавить код для чтения сохраненного режима
-  init_wifi_from_nvs();
+ 
+    init_wifi_from_nvs();
   
     // Монтирование файловой системы LittleFS
     if (!filesystem_mounted) {
@@ -1626,9 +1552,7 @@ void app_main(void) {
     }
     // Вывод списка файлов
     list_files("/littlefs");
-      // Сохраняем настройки
-    save_settings_to_nvs(&current_settings);
-    // Запуск веб-сервера
+ 
     start_webserver();
     
     // Инициализация мьютекса
@@ -1649,7 +1573,7 @@ void app_main(void) {
     xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 10, NULL);
     xTaskCreate(uart_command_task, "uart_command_task", 2048, NULL, 5, NULL);
     xTaskCreate(periodic_request_task, "periodic_request_task", 2048, NULL, 5, NULL);
-      // Запуск задачи для отслеживания состояния пина
+      // Запуск задачи для отслеживания состояния пина заводских настроек
     xTaskCreate(reset_task, "reset_task",2048, NULL,2, NULL);
     
 }
