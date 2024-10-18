@@ -1,6 +1,5 @@
-../Core/Src/TUYA.c:11:6:HAL_UART_IDLECallback	24	static
-../Core/Src/TUYA.c:24:10:calcCRC16	32	static
-../Core/Src/TUYA.c:46:6:send_updated_data	96	static
-../Core/Src/TUYA.c:86:6:process_received_data	112	static
-../Core/Src/TUYA.c:213:6:HAL_UART_TxCpltCallback	16	static
-../Core/Src/TUYA.c:225:6:send_response	16	static
+../Core/Src/TUYA.c:38:10:calcCRC16	32	static
+../Core/Src/TUYA.c:60:6:send_updated_data	96	static
+../Core/Src/TUYA.c:100:6:process_received_data	112	static
+../Core/Src/TUYA.c:218:6:HAL_UART_TxCpltCallback	16	static
+../Core/Src/TUYA.c:229:6:send_response	16	static

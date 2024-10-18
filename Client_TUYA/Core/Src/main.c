@@ -87,8 +87,8 @@ char info_buffer[20]= { 0 };
      uint16_t speed=0;
 
      uint16_t adc=0;
-    uint8_t update_data=0;
-    uint8_t cmd_in=0;
+     uint8_t update_data=0;
+     uint8_t cmd_in=0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -142,6 +142,7 @@ void LCD_SendString(char *str)
 }
 
 
+
 /* USER CODE END 0 */
 
 /**
@@ -183,7 +184,7 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   LED_1_ON;
-  I2C_send(0b00110000,0);   // 8ми битный интерфейс
+   I2C_send(0b00110000,0);   // 8ми битный интерфейс
    I2C_send(0b00000010,0);   // установка курсора в начале строки
    I2C_send(0b00001100,0);   // нормальный режим работы
    I2C_send(0b00000001,0);   // очистка дисплея
@@ -195,14 +196,15 @@ int main(void)
    //  I2C_send(0b10010100,0);   // переход на 3 строку
 
      I2C_send(0b11010100,0);   // переход на 4 строку
-
      HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-
+     void HAL_UART_IDLECallback(UART_HandleTypeDef *huart);
      // Запускаем прием по DMA с буфером для приема данных
      HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
-       __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-       __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
+           __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
 
+
+
+     LED_1_OFF;
 
   /* USER CODE END 2 */
 
@@ -797,7 +799,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = 57600;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -907,6 +909,21 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+	if (huart->Instance == USART1)
+	{
+		//lastActivityTime = HAL_GetTick();
+		LED_1_ON;
+
+	    __HAL_UART_DISABLE_IT(&huart1, UART_IT_IDLE);
+
+	    HAL_DMA_Abort(&hdma_usart1_rx);
+	    uint16_t    received_length = Size;
+	    process_received_data(rx_buffer, received_length);
+
+	}
+}
 /* USER CODE END 4 */
 
 /**

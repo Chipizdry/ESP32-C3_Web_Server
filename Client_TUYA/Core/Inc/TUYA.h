@@ -11,8 +11,8 @@
 
 #include "stm32f4xx_hal.h"  // Замените на вашу модель микроконтроллера, например stm32f4xx_hal.h
 #include "main.h"
-#define RX_BUFFER_SIZE 128  // Размер буфера для приема данных
-#define TX_BUFFER_SIZE 128  // Размер буфера для передачи данных
+#define RX_BUFFER_SIZE 32  // Размер буфера для приема данных
+#define TX_BUFFER_SIZE 32  // Размер буфера для передачи данных
 #define HEADER_1 0x55
 #define HEADER_2 0xAA
 

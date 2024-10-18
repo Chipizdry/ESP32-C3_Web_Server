@@ -6,21 +6,35 @@
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 uint8_t tx_buffer[TX_BUFFER_SIZE];
 
-
+/*
 // Обработчик IDLE линии UART для обработки завершения приема данных
 void HAL_UART_IDLECallback(UART_HandleTypeDef *huart) {
-    if (__HAL_UART_GET_FLAG(huart, UART_FLAG_IDLE)) {
-        __HAL_UART_CLEAR_IDLEFLAG(huart);
+    // Проверяем, что это именно событие IDLE для данного UART
 
-        // Вычисляем количество принятых байт
+        LED_1_ON;
+
+        // Вычисляем количество принятых байт (если используется DMA)
         uint16_t received_length = RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart->hdmarx);
 
-        // Обрабатываем данные
+        // Обрабатываем полученные данные
         process_received_data(rx_buffer, received_length);
 
+        // Подготовка к следующему приёму (если требуется)
+        // Например, можно повторно запустить приём через DMA:
+        HAL_UART_Receive_DMA(huart, rx_buffer, RX_BUFFER_SIZE);
     }
-}
 
+*/
+/*
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{    LED_1_ON;
+// Вычисляем количество принятых байт (если используется DMA)
+       uint16_t received_length = RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart->hdmarx);
+
+       // Обрабатываем полученные данные
+       process_received_data(rx_buffer, received_length);
+       HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
+}*/
 uint16_t calcCRC16(uint8_t *buffer, uint8_t u8length) {
 	unsigned int temp, temp2, flag;
 	temp = 0xFFFF;
@@ -84,12 +98,11 @@ void send_updated_data() {
 
 // Функция для обработки полученных данных
 void process_received_data(uint8_t *data, uint16_t length) {
+
     // Минимальная длина пакета: заголовок (2 байта) + тип пакета (1 байт) + команда (1 байт) + длина данных (2 байта) + CRC (2 байта)
     if (length < 8) {
         // Пакет слишком короткий
-    	HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
-    	             __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-    	             __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
+    	 HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
 
         return;
     }
@@ -97,9 +110,7 @@ void process_received_data(uint8_t *data, uint16_t length) {
     // Проверяем заголовок
     if (data[0] != HEADER_1 || data[1] != HEADER_2) {
         // Неверный заголовок
-    	HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
-    	             __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-    	             __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
+    	 HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
 
         return;
     }
@@ -120,7 +131,6 @@ if (update_data == 0) {
 		uint16_t crc = calcCRC16(heartbeat, 4);
 		heartbeat[4] = crc & 0xFF;
 		heartbeat[5] = (crc >> 8) & 0xFF;
-
 		HAL_UART_Transmit_DMA(&huart1, heartbeat, 6);  // Передаем пакет
 }
 
@@ -142,8 +152,6 @@ if (update_data == 0) {
     if (payload_len + 8 != length) {
         // Неверная длина пакета
     	HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
-    	             __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-    	             __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
 
         return;
     }
@@ -154,8 +162,7 @@ if (update_data == 0) {
     if (crc_received != crc_calculated) {
         // Неверный CRC
     	HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
-    	             __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-    	             __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
+
 
         return;
     }
@@ -202,8 +209,6 @@ if (update_data == 0) {
         default:
             // Обработка других команд
         	HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
-        	             __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-        	             __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
 
             break;
     }
@@ -215,9 +220,8 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
         // Запускаем прием данных через DMA
         // Включаем прерывание по IDLE для отслеживания завершения приема данных
         HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
-             __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-             __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
 
+        LED_1_OFF;
     }
 }
 
