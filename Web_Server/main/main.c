@@ -280,7 +280,8 @@ static void uart_event_task(void *pvParameters) {
                     uart_get_buffered_data_len(UART_NUM_1, &buffered_size);
                     int len = uart_read_bytes(UART_NUM_1, data, event.size, pdMS_TO_TICKS(100));
                     ESP_LOGI(TAG, "Received data of length: %d", len);
-                    ESP_LOG_BUFFER_HEX(TAG, data, len);  // Выводим данные в лог в HEX формате
+                  
+                    process_received_data(data,len); 
                     break;
 
                 // Ошибка фрейма
@@ -320,8 +321,33 @@ static void uart_event_task(void *pvParameters) {
  
  // Функция обработки принятых данных
 void process_received_data(uint8_t *data, int len) {
-    ESP_LOGI(TAG, "Processing received data: %.*s", len, data);
-    // Добавьте здесь логику для парсинга данных
+  
+      ESP_LOG_BUFFER_HEX(TAG, data, len); 
+     if (len < 6) {
+        ESP_LOGW(TAG, "Packet too short");
+        return;
+    }
+    
+     // Проверяем заголовок
+    if (data[0] != HEADER_1 || data[1] != HEADER_2) {
+        ESP_LOGW(TAG, "Invalid header");
+        return;
+    }
+    
+      // Проверяем CRC
+    uint16_t crc_received = (data[len - 1] << 8) | data[len - 2];
+    uint16_t crc_calculated = calcCRC16(data, 4);
+    ESP_LOGI(TAG, "Received CRC: %d", crc_received);
+    ESP_LOGI(TAG, "Calculated CRC: %d", crc_calculated); 
+    if (crc_received != crc_calculated) {
+        ESP_LOGW(TAG, "CRC mismatch");
+        return;
+    }
+      // Извлекаем длину полезной нагрузки
+    uint16_t payload_len = (data[4] << 8) | data[5];
+    
+  
+
 }
 
 // Периодическая отправка регулярных запросов
