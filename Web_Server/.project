@@ -17,4 +17,10 @@
 		<nature>org.eclipse.cdt.core.ccnature</nature>
 		<nature>com.espressif.idf.core.idfNature</nature>
 	</natures>
+	<variableList>
+		<variable>
+			<name>PYTHON</name>
+			<value>file:/G:/Espressif/tools/idf-python/3.11.2</value>
+		</variable>
+	</variableList>
 </projectDescription>

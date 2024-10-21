@@ -6,7 +6,8 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    height: 80vh;
+    font-size: 14px;
 }
 
 .container {
@@ -17,13 +18,20 @@ body {
     max-width: 600px;
     width: 100%;
     text-align: center;
+    max-height: 80vh; /* Ограничьте высоту контейнера */
+   
 }
 
 
-  /* Стили для контейнера вкладок */
-  .tabs {
+ /* Стили для контейнера вкладок */
+.tabs {
     display: flex; /* Вкладки располагаются в строку */
     border-bottom: 1px solid #ccc; /* Нижняя граница под вкладками */
+    width: 100%; /* Вкладки занимают всю ширину контейнера */
+    box-sizing: border-box; /* Учет padding и border в ширину */
+    margin: 0;
+    padding: 0;
+    max-height: 80vh;
 }
 
 /* Стили для каждой вкладки */
@@ -34,8 +42,8 @@ body {
     padding: 10px;
     background-color: #f1f1f1;
     border-right: 1px solid #ccc; /* Горизонтальная граница между вкладками */
+    box-sizing: border-box; /* Учет padding и border в ширину */
 }
-
 /* Убираем правую границу у последней вкладки */
 .tab:last-child {
     border-right: none;
@@ -44,21 +52,28 @@ body {
 /* Контент вкладок */
 .tabcontent {
     display: none;
-    padding: 15px;
     border: 1px solid #ccc;
     border-top: none; /* Убираем верхнюю границу, чтобы она не пересекалась с вкладками */
     margin-top: 0;
+    padding: 10px;
+    width: 100%; /* Ширина ограничивается размерами экрана */
+    box-sizing: border-box; /* Учет padding и border в ширину */
+    max-height: 80vh;
 }
 
 /* Стиль для активной вкладки */
 .tab.active {
-    background-color: #4CAF50;
+    background-color: #2ccb32;
     border-bottom: 1px solid #fff; /* Имитируем активную вкладку */
 }
 
 /* Активный контент вкладки */
 .tabcontent.active {
     display: block;
+}
+.inner-content {
+    width: 100%; /* Убедитесь, что внутренний контейнер также занимает всю ширину */
+    box-sizing: border-box; /* Учитываем отступы и границы */
 }
 
 /* Стиль для контейнера графика */
@@ -83,19 +98,20 @@ a:hover {
 }
 
 form {
-    margin-top: 20px;
+    margin-top: 10px;
 }
 
 input[type="text"], input[type="password"] {
     display: block;
-    margin-bottom: 15px;
     padding: 12px 15px;
-    width: 80%;
     align-items: center;
-/*max-width: 100%;*/
     border: 1px solid #ccc;
     border-radius: 5px;
     box-sizing: border-box;
+    font-size: 14px;
+    padding: 5px;
+    margin-bottom: 10px; /* Уменьшаем нижний отступ между полями */
+    width: 100%; /* Полная ширина для удобства на мобильных устройствах */
 }
 
 input[type="submit"] {
@@ -197,7 +213,7 @@ footer {
     align-items: center;
     width: 50%; /* Фиксированная ширина для всех модальных окон */
     max-width: 450px; /* Ограничение по максимальной ширине */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Для более красивого отображения */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.7); /* Для более красивого отображения */
 }
 
 .modal input {
@@ -223,7 +239,7 @@ footer {
 
 /* Если соединение активное — цвет зелёный */
 .status-indicator.active {
-    background-color: green;
+    background-color: rgb(7, 206, 7);
 }
 /* Новые стили */
 .phase-table {
@@ -278,14 +294,17 @@ footer {
 /* Кнопка Сохранить */
 button {
     margin-top: 20px;
-    padding: 10px 20px;
     background-color: #4CAF50;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
+    font-size: 14px;
+    padding: 8px 12px; /* Уменьшаем высоту и ширину кнопок */
+    margin-right: 5px; /* Разделяем кнопки отступом */
 }
-
+ 
 button:hover {
     background-color: #337e37;
 }
+

@@ -1,4 +1,4 @@
-# Install script for directory: C:/Work/Espressif_work/Web_Server/main
+# Install script for directory: G:/Espressif_work/Web_Server/main
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

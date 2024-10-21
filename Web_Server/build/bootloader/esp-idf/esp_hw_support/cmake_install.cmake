@@ -39,11 +39,11 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Work/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_hw_support/port/esp32c3/cmake_install.cmake")
+  include("G:/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_hw_support/port/esp32c3/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Work/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_hw_support/lowpower/cmake_install.cmake")
+  include("G:/Espressif_work/Web_Server/build/bootloader/esp-idf/esp_hw_support/lowpower/cmake_install.cmake")
 endif()
 

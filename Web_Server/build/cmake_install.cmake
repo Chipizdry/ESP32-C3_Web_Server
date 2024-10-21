@@ -1,4 +1,4 @@
-# Install script for directory: C:/Work/Espressif_work/Web_Server
+# Install script for directory: G:/Espressif_work/Web_Server
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,7 +39,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("C:/Work/Espressif_work/Web_Server/build/esp-idf/cmake_install.cmake")
+  include("G:/Espressif_work/Web_Server/build/esp-idf/cmake_install.cmake")
 
 endif()
 
@@ -51,5 +51,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "C:/Work/Espressif_work/Web_Server/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "G:/Espressif_work/Web_Server/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

@@ -25,7 +25,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-
+#include "esp_intr_alloc.h"
 #include <time.h>
 #include "lwip/ip4_addr.h"
 #include "soc/gpio_num.h"
@@ -67,7 +67,7 @@
 httpd_handle_t server_handle = NULL;
 
 // Основная функция приложения
-static bool nvs_initialized = false;
+//static bool nvs_initialized = false;
 static bool netif_initialized = false;
 static bool event_loop_created = false;
 static bool filesystem_mounted = false;
@@ -79,7 +79,6 @@ static int total_received = 0;  // Общее количество получе�
 static int32_t rssi=0;
  
 static uint8_t request[64];  // Буфер для запроса 
-// Очередь команд
 
 static const char *TAG = "web_server";
 // Структура для хранения всех настроек
@@ -104,6 +103,8 @@ device_settings_t default_settings = {
     .speed_limit = 1500,
     .wifi_ssid = "Medical",
     .wifi_password = "0445026833",
+ //   .wifi_ssid = "TP-Link_FA4F",
+ //   .wifi_password = "19481555",
     .wifi_ap_ssid = "TP-Link_FA4F",
     .wifi_ap_password = "19481555",
     .wifi_mode = "STA",
@@ -131,7 +132,8 @@ typedef struct {
 } sensor_data_t;
 
 static QueueHandle_t uart_command_queue;
-static QueueHandle_t uart_event_queue;
+//static QueueHandle_t uart_event_queue;
+static QueueHandle_t uart_queue;
 // Объявляем мьютекс
 SemaphoreHandle_t uart_mutex;
 
@@ -148,6 +150,40 @@ void init_reset_pin() {
     io_conf.pin_bit_mask = (1ULL << RESET_PIN); // Пин для отслеживания
     io_conf.pull_up_en = GPIO_PULLUP_ENABLE; // Включаем внутреннюю подтяжку
     gpio_config(&io_conf);
+}
+
+
+static void IRAM_ATTR uart_isr(void* arg) {
+    // Код, который будет выполняться в ISR
+}
+
+void init_uart() {
+    const uart_port_t uart_num = UART_NUM_1;
+
+    // Настройки UART
+    uart_config_t uart_config = {
+        .baud_rate = 9600,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_APB,
+    };
+
+    uart_param_config(uart_num, &uart_config);
+    uart_set_pin(uart_num, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+
+    // Инициализация UART с использованием DMA
+   // esp_err_t uart_err = uart_driver_install(UART_NUM_1, UART_BUF_SIZE, UART_BUF_SIZE, 0, &uart_queue, 0);
+    esp_err_t uart_err =  uart_driver_install(UART_NUM_1,UART_BUF_SIZE * 2, UART_BUF_SIZE* 2, 100, &uart_queue, ESP_INTR_FLAG_IRAM);
+    if (uart_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to install UART driver: %s", esp_err_to_name(uart_err));
+    }
+
+     // Настройка паттерна для детектирования
+    uart_enable_pattern_det_baud_intr(UART_NUM_1, '\n', 1, 9, 0, 0);  // Паттерн '\n'
+    uart_pattern_queue_reset(UART_NUM_1, 20);
+
 }
 
 // Задача для отслеживания состояния пина
@@ -227,75 +263,60 @@ uint16_t form_tuya_request(uint8_t cmd_type, uint8_t command, uint8_t *payload, 
 }
 
 
-void init_uart() {
-    const uart_port_t uart_num = UART_NUM_1;
-
-    uart_config_t uart_config = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-    };
-
-    uart_param_config(uart_num, &uart_config);
-    uart_set_pin(uart_num, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-
-    int rx_buffer_size = 1024;
-    int tx_buffer_size = 1024;
-    esp_err_t uart_err = uart_driver_install(UART_NUM_1, rx_buffer_size, tx_buffer_size, 20, &uart_event_queue, 0);
-		if (uart_err != ESP_OK) {
-		    ESP_LOGE(TAG, "Failed to install UART driver: %s", esp_err_to_name(uart_err));
-		}
-   
-}
-    
-
-// Задача для обработки событий UART (например, прием данных)
-void uart_event_task(void *pvParameters) {
+// Задача для обработки данных из UART
+static void uart_event_task(void *pvParameters) {
     uart_event_t event;
-    uint8_t *data = (uint8_t *)malloc(RX_BUFFER_SIZE);
-     if (data == NULL) {
-       ESP_LOGE(TAG, "Failed to allocate memory for data buffer");
-    return; // Выход из функции, если память не выделена
-       }
-    size_t len = 0;  // Изменение типа переменной на size_t
-
+    size_t buffered_size;
+    uint8_t* data = (uint8_t*) malloc(UART_BUF_SIZE);
+    
     while (1) {
-        // Ожидание событий UART
-        if (xQueueReceive(uart_event_queue, (void *)&event, portMAX_DELAY)) {
+        // Ждём, когда придёт событие из UART
+        if (xQueueReceive(uart_queue, (void*)&event, (TickType_t)portMAX_DELAY)) {
+            bzero(data,UART_BUF_SIZE);
+
             switch (event.type) {
+                // Данные пришли
                 case UART_DATA:
-                    // Принятое количество байт
-                    uart_get_buffered_data_len(UART_NUM_1, &len);
-                    len = uart_read_bytes(UART_NUM_1, data, RX_BUFFER_SIZE, pdMS_TO_TICKS(100));
-                    ESP_LOGI(TAG, "Received data: %d bytes", len);
-                    process_received_data(data, len);  // Обработка данных
+                    uart_get_buffered_data_len(UART_NUM_1, &buffered_size);
+                    int len = uart_read_bytes(UART_NUM_1, data, event.size, pdMS_TO_TICKS(100));
+                    ESP_LOGI(TAG, "Received data of length: %d", len);
+                    ESP_LOG_BUFFER_HEX(TAG, data, len);  // Выводим данные в лог в HEX формате
                     break;
 
+                // Ошибка фрейма
+                case UART_FRAME_ERR:
+                    ESP_LOGE(TAG, "UART Frame Error");
+                    break;
+
+                // Ошибка паритета
+                case UART_PARITY_ERR:
+                    ESP_LOGE(TAG, "UART Parity Error");
+                    break;
+
+                // Ошибка буфера
+                case UART_BUFFER_FULL:
+                    ESP_LOGW(TAG, "Ring buffer full");
+                    uart_flush_input(UART_NUM_1);  // Очищаем входной буфер
+                    xQueueReset(uart_queue);     // Сбрасываем очередь
+                    break;
+
+                // Таймаут
                 case UART_FIFO_OVF:
                     ESP_LOGW(TAG, "UART FIFO Overflow");
-                    uart_flush_input(UART_NUM_1);
-                    xQueueReset(uart_event_queue);
+                    uart_flush_input(UART_NUM_1);  // Очищаем входной буфер
+                    xQueueReset(uart_queue);     // Сбрасываем очередь
                     break;
 
-                case UART_BUFFER_FULL:
-                    ESP_LOGW(TAG, "UART Buffer Full");
-                    uart_flush_input(UART_NUM_1);
-                    xQueueReset(uart_event_queue);
-                    break;
-
+                // Событие по умолчанию
                 default:
-                    ESP_LOGW(TAG, "Unknown UART event type: %d", event.type);
+                    ESP_LOGI(TAG, "UART event type: %d", event.type);
                     break;
             }
         }
     }
-
     free(data);
     vTaskDelete(NULL);
 }
-
  
  // Функция обработки принятых данных
 void process_received_data(uint8_t *data, int len) {
@@ -346,12 +367,13 @@ void uart_command_task(void *pvParameters) {
 				}
 
             // Используем мьютекс для доступа к UART
-            if (xSemaphoreTake(uart_mutex, portMAX_DELAY)) {
+            if (xSemaphoreTake(uart_mutex, pdMS_TO_TICKS(50))) {
                 int res = uart_write_bytes(UART_NUM_1, (const char *)request, request_len);
                 if (res < 0) {
                     ESP_LOGE(TAG, "Failed to write bytes to UART");
                 }
                 xSemaphoreGive(uart_mutex);  // Освобождаем доступ к UART
+                  uart_flush_input(UART_NUM_1); 
             } else {
                 ESP_LOGE(TAG, "Failed to take UART mutex");
             }
@@ -493,7 +515,6 @@ void wifi_signal_strength_task(void *pvParameters) {
         } else {
             ESP_LOGE(TAG, "Failed to get AP info");
         }
-        // Ждем 5 секунд перед следующим измерением
         vTaskDelay(pdMS_TO_TICKS(3000));
     }
 }
@@ -857,7 +878,8 @@ esp_err_t wifi_mode_handler(httpd_req_t *req) {
 		
 		// Получение уникального SSID из MAC-адреса
 		uint8_t mac[6];
-		ESP_ERROR_CHECK(esp_read_mac(mac, ESP_MAC_WIFI_STA));
+		ESP_ERROR_CHECK(esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP));
+	//	ESP_ERROR_CHECK(esp_read_mac(mac, ESP_MAC_WIFI_STA));
 		char unique_id[7];
 		snprintf(unique_id, sizeof(unique_id), "%02X%02X%02X", mac[3], mac[4], mac[5]);
 		
@@ -884,8 +906,10 @@ esp_err_t wifi_mode_handler(httpd_req_t *req) {
 		
 		ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));  // Устанавливаем режим AP
 		ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));  // Применяем настройки AP
-		esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL);
-        esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL);
+        ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_START, &wifi_event_handler, NULL));
+        ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STOP, &wifi_event_handler, NULL));
+        ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STACONNECTED, &wifi_event_handler, NULL));
+        ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STADISCONNECTED, &wifi_event_handler, NULL));
 
 		ESP_ERROR_CHECK(esp_wifi_start());  // Запускаем Wi-Fi
 		
@@ -1193,8 +1217,8 @@ esp_err_t save_wifi_settings_handler(httpd_req_t *req) {
     int ret, remaining = req->content_len;
 
     // Буфер для хранения SSID и пароля
-    char ssid[32] = {0};
-    char password[64] = {0};
+    char ssid[16] = {0};
+    char password[16] = {0};
 
     // Читаем содержимое POST-запроса
     while (remaining > 0) {
@@ -1450,8 +1474,6 @@ httpd_handle_t start_webserver(void) {
         ESP_LOGI(TAG, "Server is already started");
         return server;
     }
-
-	
 	
 	 ESP_LOGI(TAG, "Initializing web server...");
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -1462,12 +1484,8 @@ httpd_handle_t start_webserver(void) {
     
    
     
-    if (httpd_start(&server, &config) == ESP_OK) {
-		
-			
-		   ESP_LOGI(TAG, "Web server started on port: %d", config.server_port);
-	
-		   
+    if (httpd_start(&server, &config) == ESP_OK) {		
+		   ESP_LOGI(TAG, "Web server started on port: %d", config.server_port);		   
 				httpd_uri_t root_get_uri = {
 				    .uri = "/",  // Обработка корневого запроса
 				    .method = HTTP_GET,
@@ -1502,12 +1520,12 @@ httpd_handle_t start_webserver(void) {
 		
 		      httpd_register_uri_handler(server, &data_uri);
 					
-			httpd_uri_t get_ip_uri = {
-			    .uri = "/get_ip",
-			    .method = HTTP_GET,
-			    .handler = get_ip_handler,
-			    .user_ctx = NULL
-			};
+				httpd_uri_t get_ip_uri = {
+				    .uri = "/get_ip",
+				    .method = HTTP_GET,
+				    .handler = get_ip_handler,
+				    .user_ctx = NULL
+				};
 			httpd_register_uri_handler(server, &get_ip_uri);
 						
 						
@@ -1613,11 +1631,17 @@ void app_main(void) {
    
 	 // Создание очередей
     uart_command_queue = xQueueCreate(10, sizeof(uart_command_t));
-    uart_event_queue = xQueueCreate(10, sizeof(uart_event_t));
+   // uart_event_queue = xQueueCreate(10, sizeof(uart_event_t));
+//		uart_event_queue = xQueueCreate(20, sizeof(uart_event_t));  
+	//	if (uart_event_queue == NULL) {
+//		    ESP_LOGE(TAG, "Failed to create UART event queue");
+	//	}
+		// Создаём задачу для обработки UART событий
+    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 12, NULL);
 
     // Создание задач
     xTaskCreate(wifi_signal_strength_task, "wifi_signal_strength_task", 2048, NULL, 5, NULL);
-    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 10, NULL);
+  //  xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 10, NULL);
     xTaskCreate(uart_command_task, "uart_command_task", 2048, NULL, 5, NULL);
     xTaskCreate(periodic_request_task, "periodic_request_task", 2048, NULL, 5, NULL);
       // Запуск задачи для отслеживания состояния пина заводских настроек

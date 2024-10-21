@@ -266,7 +266,7 @@
     "IDF_CMAKE": true,
     "IDF_EXPERIMENTAL_FEATURES": false,
     "IDF_FIRMWARE_CHIP_ID": 5,
-    "IDF_INIT_VERSION": "5.2.2",
+    "IDF_INIT_VERSION": "5.3.1",
     "IDF_TARGET": "esp32c3",
     "IDF_TARGET_ARCH": "riscv",
     "IDF_TARGET_ARCH_RISCV": true,
