@@ -52,7 +52,7 @@
 #define RTS_PIN (UART_PIN_NO_CHANGE)  // Управление передачей данных (опционально)
 
 #define UART_PORT_NUM      UART_NUM_1
-#define UART_BAUD_RATE     9600
+#define UART_BAUD_RATE     57600
 #define UART_BUF_SIZE      (1024)
 #define RX_BUFFER_SIZE 32
 #define HEADER_1 0x55
@@ -162,7 +162,7 @@ void init_uart() {
 
     // Настройки UART
     uart_config_t uart_config = {
-        .baud_rate = 9600,
+        .baud_rate = UART_BAUD_RATE,
         .data_bits = UART_DATA_8_BITS,
         .parity    = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -336,7 +336,7 @@ void process_received_data(uint8_t *data, int len) {
     
       // Проверяем CRC
     uint16_t crc_received = (data[len - 1] << 8) | data[len - 2];
-    uint16_t crc_calculated = calcCRC16(data, 4);
+    uint16_t crc_calculated = calcCRC16(data,len - 2);
     ESP_LOGI(TAG, "Received CRC: %d", crc_received);
     ESP_LOGI(TAG, "Calculated CRC: %d", crc_calculated); 
     if (crc_received != crc_calculated) {

@@ -26,10 +26,10 @@ extern UART_HandleTypeDef huart1;  // Объявляем huart1 как внеш�
 void UART_DMA_Init(UART_HandleTypeDef *huart, DMA_HandleTypeDef *hdma_tx, DMA_HandleTypeDef *hdma_rx);
 extern DMA_HandleTypeDef hdma_usart1_rx;
 // Обработка полученных данных
-void process_received_data(uint8_t *data, uint16_t length);
+void send_response(uint8_t *payload, uint16_t payload_len, uint8_t command);
 
 // Функция для отправки данных по DMA
-void send_response(uint8_t *data, uint16_t length);
+//void send_response(uint8_t *data, uint16_t length);
 
 // Прерывание для IDLE линии (используется для определения завершения приема данных)
 void HAL_UART_IDLECallback(UART_HandleTypeDef *huart);

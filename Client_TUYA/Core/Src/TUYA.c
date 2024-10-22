@@ -6,35 +6,7 @@
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 uint8_t tx_buffer[TX_BUFFER_SIZE];
 
-/*
-// Обработчик IDLE линии UART для обработки завершения приема данных
-void HAL_UART_IDLECallback(UART_HandleTypeDef *huart) {
-    // Проверяем, что это именно событие IDLE для данного UART
 
-        LED_1_ON;
-
-        // Вычисляем количество принятых байт (если используется DMA)
-        uint16_t received_length = RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart->hdmarx);
-
-        // Обрабатываем полученные данные
-        process_received_data(rx_buffer, received_length);
-
-        // Подготовка к следующему приёму (если требуется)
-        // Например, можно повторно запустить приём через DMA:
-        HAL_UART_Receive_DMA(huart, rx_buffer, RX_BUFFER_SIZE);
-    }
-
-*/
-/*
-void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
-{    LED_1_ON;
-// Вычисляем количество принятых байт (если используется DMA)
-       uint16_t received_length = RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart->hdmarx);
-
-       // Обрабатываем полученные данные
-       process_received_data(rx_buffer, received_length);
-       HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
-}*/
 uint16_t calcCRC16(uint8_t *buffer, uint8_t u8length) {
 	unsigned int temp, temp2, flag;
 	temp = 0xFFFF;
@@ -57,44 +29,41 @@ uint16_t calcCRC16(uint8_t *buffer, uint8_t u8length) {
 
 }
 
-void send_updated_data() {
-    uint8_t response[64];
+void send_response(uint8_t *payload, uint16_t payload_len, uint8_t command) {
+    uint8_t response[16]; // Массив для формирования пакета
     uint16_t pos = 0;
 
     // Заголовок
-    response[pos] = HEADER_1;
+    response[pos++] = HEADER_1;
     response[pos++] = HEADER_2;
 
     // Тип пакета: ответ
     response[pos++] = 0x01;
 
-    // Команда: 0x05, например, для отправки обновленных данных
-    response[pos++] = 0x05;
+    // Команда (переданная в функцию)
+    response[pos++] = command;
 
-    // Данные — пример значений напряжения, тока и других параметров
-    float voltage = 230.5;
-    float current = 5.2;
-    float temperature = 24.3;
+    // Длина полезной нагрузки
+    response[pos++] = (payload_len >> 8) & 0xFF;  // Старший байт длины
+    response[pos++] = payload_len & 0xFF;          // Младший байт длины
 
-    uint16_t voltage_val = (uint16_t)(voltage * 10);
-    uint16_t current_val = (uint16_t)(current * 10);
-    uint16_t temp_val = (uint16_t)(temperature * 10);
+    // Копируем полезную нагрузку (payload) в массив ответа
+    for (uint16_t i = 0; i < payload_len; i++) {
+        response[pos++] = payload[i];
+    }
 
-    response[pos++] = (voltage_val >> 8) & 0xFF;
-    response[pos++] = voltage_val & 0xFF;
-    response[pos++] = (current_val >> 8) & 0xFF;
-    response[pos++] = current_val & 0xFF;
-    response[pos++] = (temp_val >> 8) & 0xFF;
-    response[pos++] = temp_val & 0xFF;
-
-    // Вычисляем CRC
+    // Вычисляем CRC для всех данных до CRC (без последних двух байт CRC)
     uint16_t crc = calcCRC16(response, pos);
-    response[pos++] = crc & 0xFF;
-    response[pos++] = (crc >> 8) & 0xFF;
 
-    // Отправляем ответ через UART
+    // Добавляем CRC в конец пакета
+    response[pos++] = crc & 0xFF;         // Младший байт CRC
+    response[pos++] = (crc >> 8) & 0xFF;  // Старший байт CRC
+  //  response[pos++] = crc & 0xFF;         // Младший байт CRC
+
+    // Отправляем сформированный пакет через UART
     HAL_UART_Transmit_DMA(&huart1, response, pos);
 }
+
 
 // Функция для обработки полученных данных
 void process_received_data(uint8_t *data, uint16_t length) {
@@ -137,7 +106,7 @@ if (update_data == 0) {
 			// Если данные обновились
     	        else if (update_data == 1) {
     	       // Отправляем новые данные
-    	            send_updated_data();
+    	           // send_updated_data();
     	            update_data = 0;  // Сбрасываем флаг обновления после отправки
     	            return;
     	           }
@@ -149,7 +118,7 @@ if (update_data == 0) {
     uint16_t payload_len = (data[4] << 8) | data[5];
 
     // Проверяем корректность длины пакета
-    if (payload_len + 8 != length) {
+    if ((payload_len + 8) != length) {
         // Неверная длина пакета
     	HAL_UARTEx_ReceiveToIdle_DMA(&huart1,rx_buffer, RX_BUFFER_SIZE);
 
@@ -157,7 +126,7 @@ if (update_data == 0) {
     }
 
     // Проверяем CRC
-    uint16_t crc_received = (data[length - 2] << 8) | data[length - 1];
+    uint16_t crc_received = (data[length - 1] << 8) | data[length - 2];
     uint16_t crc_calculated = calcCRC16(data, length - 2);
     if (crc_received != crc_calculated) {
         // Неверный CRC
@@ -183,9 +152,23 @@ if (update_data == 0) {
                 float high = highThreshold / 10.0;
                 float maxCurrent = maxCurrentRange / 10.0;
 
-                // Сохраняем в переменные или используем
-                // Пример: отображение значений
-                printf("Battery settings - Low: %.2f, High: %.2f, Max Current: %.2f\n", low, high, maxCurrent);
+                // Кодируем параметры в uint16_t с точностью до 0.1
+                         uint16_t load_value = (uint16_t)(low * 10);
+                         uint16_t voltage_value = (uint16_t)(high * 10);
+                         uint16_t current_diff_value = (uint16_t)(maxCurrent * 10);
+
+                         uint8_t load[6]={0, };
+                         // Заполняем payload данными
+                         load[0] = (load_value >> 8) & 0xFF;      // Старший байт maxLoad
+                         load[1] = load_value & 0xFF;             // Младший байт maxLoad
+                         load[2] = (voltage_value >> 8) & 0xFF;   // Старший байт outputVoltage
+                         load[3] = voltage_value & 0xFF;          // Младший байт outputVoltage
+                         load[4] = (current_diff_value >> 8) & 0xFF;  // Старший байт maxCurrentDifference
+                         load[5] = current_diff_value & 0xFF;         // Младший байт maxCurrentDifference
+
+
+                send_response(load, 6, 0x05);
+               // printf("Battery settings - Low: %.2f, High: %.2f, Max Current: %.2f\n", low, high, maxCurrent);
                }
             break;
 
@@ -202,7 +185,8 @@ if (update_data == 0) {
 
                 // Сохраняем в переменные или используем
                 // Пример: отображение значений
-                printf("Load settings - Max Load: %.2f, Output Voltage: %.2f, Max Current Difference: %.2f\n", load, voltage, currentDiff);
+                send_response(*payload, 6, 0x05);
+              //  printf("Load settings - Max Load: %.2f, Output Voltage: %.2f, Max Current Difference: %.2f\n", load, voltage, currentDiff);
                 }
               break;
 
@@ -226,8 +210,9 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 }
 
 // Функция отправки данных через DMA
+/*
 void send_response(uint8_t *data, uint16_t length) {
   // Отправка через DMA
     HAL_UART_Transmit_DMA(&huart1,data, length);
 }
-
+*/
