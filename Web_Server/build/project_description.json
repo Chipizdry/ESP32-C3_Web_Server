@@ -1195,7 +1195,7 @@
             "managed_reqs": [],
             "managed_priv_reqs": [ "joltwallet__littlefs" ],
             "file": "G:/Espressif_work/Web_Server/build/esp-idf/main/libmain.a",
-            "sources": [ "G:/Espressif_work/Web_Server/main/main.c" ],
+            "sources": [ "G:/Espressif_work/Web_Server/main/main.c", "G:/Espressif_work/Web_Server/main/uart.c" ],
             "include_dirs": [ "." ]
         },
         "mbedtls": {
