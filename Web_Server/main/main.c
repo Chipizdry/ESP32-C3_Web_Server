@@ -1192,14 +1192,14 @@ esp_err_t data_get_handler(httpd_req_t *req) {
 
 esp_err_t file_get_handler(httpd_req_t *req) {
     char filepath[522];
-    if (strcmp(req->uri, "/") == 0) {
-        snprintf(filepath, sizeof(filepath), "/littlefs/index.html");
-    } else if (strcmp(req->uri, "/favicon.png") == 0) {
-        snprintf(filepath, sizeof(filepath), "/littlefs/favicon.png");  // Обслуживаем favicon
-    } else {
-        snprintf(filepath, sizeof(filepath), "/littlefs%s", req->uri);
-    }
-    ESP_LOGI(TAG, "Requested URI: %s, Filepath: %s", req->uri, filepath);
+	    if (strcmp(req->uri, "/") == 0) {
+	    snprintf(filepath, sizeof(filepath), "/littlefs/index.html");
+		} else if (strcmp(req->uri, "/scripts.js") == 0) {
+		    snprintf(filepath, sizeof(filepath), "/littlefs/scripts.js");
+		} else {
+		    snprintf(filepath, sizeof(filepath), "/littlefs%s", req->uri);
+		}
+	    ESP_LOGI(TAG, "Requested URI: %s, Filepath: %s", req->uri, filepath);
 
     // Открываем файл
     FILE* file = fopen(filepath, "r");
@@ -1276,6 +1276,15 @@ httpd_handle_t start_webserver(void) {
 			    .user_ctx = NULL
 	            };
 	            httpd_register_uri_handler(server, &style_get_uri);
+   
+		   // Обработчик для JavaScript
+		        httpd_uri_t script_get_uri = {
+		            .uri = "/scripts.js",  // Обработка JavaScript
+		            .method = HTTP_GET,
+		            .handler = file_get_handler,
+		            .user_ctx = NULL
+		        };
+		        httpd_register_uri_handler(server, &script_get_uri);
    
 			   // Регистрация URI-обработчика
 			    httpd_uri_t data_uri = {
