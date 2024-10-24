@@ -109,11 +109,19 @@
             </div>
         </div>
 
-
+          <!--Модальное окно инвертора --> 
         <div id="inverterModal" class="modal">
             <div class="modal-content">
                 <span class="close" id="closeInverter">&times;</span>
                 <p>Информация о инверторе</p>
+            </div>
+        </div>
+
+          <!--Модальное окно Ветряка --> 
+          <div id="WindTurbineModal" class="modal">
+            <div class="modal-content">
+                <span class="close" id="closeWindTurbine">&times;</span>
+                <p>Информация о Ветрогенераторе</p>
             </div>
         </div>
      <!-- Модальное окно для логина -->
@@ -344,7 +352,45 @@
             </g>
             </svg>
             
-    </div>
+        </div>
+
+                    <!-- SVG иконка ветряка -->
+        <div class="WindTurbineIcon" id="WindTurbineIcon">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg"
+            width="100" height="100" viewBox="0 0 512.000000 512.000000"
+            preserveAspectRatio="xMidYMid meet" id="WindTurbineIcon">
+
+            <g transform="translate(0.000000,512.000000) scale(0.100000,-0.100000)"
+            fill="#000000" stroke="none">
+                <path d="M2487 5103 c-8 -10 -18 -29 -21 -43 -8 -35 -116 -1324 -116 -1385 0
+                -60 26 -107 71 -130 25 -13 53 -16 131 -13 98 3 100 4 128 35 16 18 33 47 38
+                65 6 23 -8 212 -44 623 -29 325 -57 643 -63 708 -7 89 -13 123 -27 138 -22 24
+                -75 25 -97 2z"/>
+                <path d="M2455 3322 c-51 -24 -92 -72 -101 -118 -24 -127 51 -226 171 -228
+                136 -1 224 137 165 259 -42 87 -150 127 -235 87z"/>
+                <path d="M2120 3090 c-20 -3 -42 -10 -50 -15 -32 -19 -1077 -820 -1107 -848
+                -38 -36 -41 -64 -12 -101 27 -34 53 -33 124 5 32 17 313 163 624 325 406 211
+                575 304 599 329 30 32 38 59 33 109 -1 21 -84 158 -106 176 -21 18 -67 27
+                -105 20z"/>
+                <path d="M2929 3086 c-35 -11 -86 -76 -128 -161 -25 -50 -15 -105 26 -146 15
+                -16 282 -161 593 -322 311 -162 592 -308 624 -326 72 -38 98 -39 125 -5 29 37
+                26 65 -11 100 -30 28 -1074 829 -1107 849 -27 16 -89 22 -122 11z"/>
+                <path d="M2450 2723 c0 -16 -95 -2467 -102 -2650 l-3 -73 182 0 c168 0 183 1
+                183 18 1 55 -122 2699 -125 2710 -3 8 -26 12 -70 12 -55 0 -65 -3 -65 -17z"/>
+            </g>
+            </svg>
+
+        </div>
+
+
+
+
+
+
+
+
+
+
 
     </div>
     <br><br><br><br>
@@ -614,14 +660,17 @@
                 const batteryModal = document.getElementById('batteryModal');
                 const inverterModal = document.getElementById('inverterModal');
                 const loadModal = document.getElementById('loadSettingsModal');
+                const WindTurbineModal= document.getElementById(`WindTurbineModal`);
                 // Получаем иконки
                 const batteryIcon = document.getElementById('batteryIcon');
                 const inverterIcon = document.getElementById('inverterIcon');
                 const loadIcon = document.getElementById('loadIcon'); 
-                // Получаем кнопки закрытия модальных окон
+                const WindTurbineIcon= document.getElementById(`WindTurbineIcon`);
+                // Получаем кнопки закрытия модальных окон 
                 const closeBattery = document.getElementById('closeBattery');
                 const closeInverter = document.getElementById('closeInverter');
                 const closeLoad = document.getElementById('closeLoadSettings');
+                const closeWindTurbine = document.getElementById(`closeWindTurbine`);
                 // Открытие модального окна для батареи
                 batteryIcon.onclick = function() {
                     batteryModal.style.display = 'flex';
@@ -636,6 +685,10 @@
                 loadIcon.onclick = function() {
                     loadModal.style.display = 'flex';
                 }
+                  // Открытие модального окна для ветрогенератора
+                  WindTurbineIcon.onclick = function() {
+                    WindTurbineModal.style.display = 'flex';
+                }
 
                 // Закрытие модальных окон
                 closeBattery.onclick = function() {
@@ -647,6 +700,9 @@
                 closeLoad.onclick = function() {
                     loadModal.style.display = 'none'; 
                 }
+                closeWindTurbine.onclick = function() {
+                    WindTurbineModal.style.display = 'none'; 
+                }
                 // Закрытие модального окна при клике вне его
                 window.onclick = function(event) {
                     if (event.target == batteryModal) {
@@ -657,6 +713,9 @@
                     }
                     if (event.target == loadModal) { 
                         loadModal.style.display = 'none';
+                    }
+                    if (event.target == WindTurbineModal) { 
+                        WindTurbineModal.style.display = 'none';
                     }
                 }
             });
@@ -1025,39 +1084,40 @@ function updateData() {
             modal.dataset.mode = mode; // Сохраняем режим переключения
         }
 
-        // Функция для подтверждения переключения режима
-        function confirmModeSwitch() {
-            var modal = document.getElementById('modeConfirmationModal');
-            var mode = modal.dataset.mode;
+       
+ // Функция для подтверждения переключения режима
+ function confirmModeSwitch() {
+    var modal = document.getElementById('modeConfirmationModal');
+    var mode = modal.dataset.mode;
 
-            // Отправляем запрос на сервер для переключения режима
-            fetch('/wifi_mode', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ mode: mode })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Режим успешно переключен на ' + (mode === 'AP' ? 'Access Point' : 'Station'));
-                } else {
-                    alert('Ошибка при переключении режима.');
-                }
-            })
-            .catch(error => {
-                console.error('Ошибка:', error);
-            });
-
-            modal.style.display = 'none';
+    // Отправляем запрос на сервер для переключения режима
+    fetch('/wifi_mode', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ mode: mode })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Режим успешно переключен на ' + (mode === 'AP' ? 'Access Point' : 'Station'));
+        } else {
+            alert('Ошибка при переключении режима.');
         }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+    });
 
-        // Функция для отмены переключения режима
-        function cancelModeSwitch() {
-            var modal = document.getElementById('modeConfirmationModal');
-            modal.style.display = 'none';
-        }
+    modal.style.display = 'none';
+}
+
+// Функция для отмены переключения режима
+function cancelModeSwitch() {
+    var modal = document.getElementById('modeConfirmationModal');
+    modal.style.display = 'none';
+}
 
 /*
 function saveSettings() {
@@ -1112,5 +1172,6 @@ function toggleVisibility() {
     
     
     </script>
+    <script src="/scripts.js"></script>
 </body>
 </html>

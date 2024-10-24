@@ -46,17 +46,6 @@
 
 #define BOUNDARY_PREFIX "------WebKitFormBoundary"
 
-// Определите пины для UART
-#define TXD_PIN (GPIO_NUM_10)  // Передача данных (TX)
-#define RXD_PIN (GPIO_NUM_9)  // Приём данных (RX)
-#define RTS_PIN (UART_PIN_NO_CHANGE)  // Управление передачей данных (опционально)
-
-#define UART_PORT_NUM      UART_NUM_1
-#define UART_BAUD_RATE     57600
-#define UART_BUF_SIZE      (1024)
-#define RX_BUFFER_SIZE 32
-
-
 #define RESET_PIN GPIO_NUM_0  // Выберите нужный пин, например, GPIO 0
 
 // Размер очереди
@@ -415,6 +404,7 @@ const char* get_mime_type(const char* path) {
     if (strcmp(ext, ".jpg") == 0 || strcmp(ext, ".jpeg") == 0) return "image/jpeg";
     if (strcmp(ext, ".gif") == 0) return "image/gif";
     if (strcmp(ext, ".bin") == 0) return "application/octet-stream"; 
+    if (strcmp(ext, ".svg") == 0) return "image/svg+xml";
     // Добавьте другие типы по необходимости
     return "text/plain";
 }

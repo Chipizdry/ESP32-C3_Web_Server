@@ -36,7 +36,6 @@ typedef struct {
 
 extern QueueHandle_t uart_command_queue;
 extern SemaphoreHandle_t uart_mutex;
-//extern uint8_t rx_buffer[RX_BUFFER_SIZE];
 
 // Функции для работы с UART
 void init_uart(void);
