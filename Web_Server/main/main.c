@@ -549,7 +549,7 @@ esp_err_t get_ip_handler(httpd_req_t *req) {
     if (res != ESP_OK) {
         ESP_LOGE("IP_HANDLER", "Failed to send response: %s", esp_err_to_name(res));
     }
-
+send_ip_config_command();
     return res;
 }
 

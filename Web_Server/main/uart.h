@@ -8,6 +8,7 @@
 #include "freertos/semphr.h"
 #include "driver/gpio.h"
 #include <stdint.h>
+#include "esp_netif.h"
 // Определите пины для UART
 #define TXD_PIN (GPIO_NUM_10)  // Передача данных (TX)
 #define RXD_PIN (GPIO_NUM_9)  // Приём данных (RX)
@@ -23,6 +24,7 @@
 // Определяем командные коды
 #define COMMAND_REGULAR_REQUEST 0x01  // Команда для регулярного запроса данных
 #define COMMAND_FRONTEND 0x02         // Команда от фронтэнда
+#define CMD_IP_CONFIG     0x14  // Команда для передачи IP данных
 //#define TAG "UART"
 #define QUEUE_SIZE 10
 
@@ -46,4 +48,5 @@ static void IRAM_ATTR uart_isr(void* arg);
 void periodic_request_task(void *pvParameters);
 void uart_command_task(void *pvParameters);
 void uart_event_task(void *pvParameters);
+void send_ip_config_command();
 #endif /* MAIN_UART_H_ */

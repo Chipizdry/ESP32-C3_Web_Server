@@ -338,3 +338,46 @@ void process_received_data(uint8_t *data, int len) {
             break;
     }
 }
+
+// Функция для извлечения IP данных и отправки команды
+void send_ip_config_command() {
+    esp_netif_ip_info_t ip_info;
+
+    // Получаем текущую IP конфигурацию устройства
+    if (esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"), &ip_info) == ESP_OK) {
+    
+      uart_command_t cmd;
+        // Конвертируем IP адреса в формат AA, BB, CC, DD
+        cmd.payload[0] = (ip_info.ip.addr >> 24) & 0xFF;
+        cmd.payload[1] = (ip_info.ip.addr >> 16) & 0xFF;
+        cmd.payload[2] = (ip_info.ip.addr >> 8) & 0xFF;
+        cmd.payload[3] = ip_info.ip.addr & 0xFF;
+
+        // Маска подсети
+        cmd.payload[4] = (ip_info.netmask.addr >> 24) & 0xFF;
+        cmd.payload[5] = (ip_info.netmask.addr >> 16) & 0xFF;
+        cmd.payload[6] = (ip_info.netmask.addr >> 8) & 0xFF;
+        cmd.payload[7] = ip_info.netmask.addr & 0xFF;
+
+        // Шлюз
+        cmd.payload[8] = (ip_info.gw.addr >> 24) & 0xFF;
+        cmd.payload[9] = (ip_info.gw.addr >> 16) & 0xFF;
+        cmd.payload[10] = (ip_info.gw.addr >> 8) & 0xFF;
+        cmd.payload[11] = ip_info.gw.addr & 0xFF;
+
+        // Создаем команду для отправки через UART
+       
+        cmd.cmd_type = COMMAND_REGULAR_REQUEST;
+        cmd.command = CMD_IP_CONFIG;
+         cmd.payload_len = 12;
+
+        // Отправляем команду в очередь UART
+        if (xQueueSend(uart_command_queue, &cmd, 0) != pdPASS) {
+            ESP_LOGW(TAG, "Failed to send IP configuration command to UART queue");
+        } else {
+            ESP_LOGI(TAG, "IP configuration command sent to UART queue");
+        }
+    } else {
+        ESP_LOGE(TAG, "Failed to get IP configuration");
+    }
+}
