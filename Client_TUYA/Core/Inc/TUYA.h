@@ -27,7 +27,7 @@ void UART_DMA_Init(UART_HandleTypeDef *huart, DMA_HandleTypeDef *hdma_tx, DMA_Ha
 extern DMA_HandleTypeDef hdma_usart1_rx;
 // Обработка полученных данных
 void send_response(uint8_t *payload, uint16_t payload_len, uint8_t command);
-
+void process_received_data(uint8_t *data, uint16_t length);
 // Функция для отправки данных по DMA
 //void send_response(uint8_t *data, uint16_t length);
 

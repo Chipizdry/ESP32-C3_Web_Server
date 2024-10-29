@@ -7,6 +7,7 @@
     <link rel="icon" type="image/png" href="/favicon.png">
     <title>FlyWheel Web Server</title>
     <script src="/scripts.js"></script>
+    <script src="/power-settings.js"></script>
     <!-- Подключаем библиотеку Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -212,7 +213,7 @@
         </div>
         <!-- Иконка сети электропитания -->
           <div class="icon power-grid-icon">
-         <svg width="80px" height="80px" viewBox="18.899 98.165 16.789 22.385" version="1.1" xmlns="http://www.w3.org/2000/svg">
+         <svg width="70px" height="70px" viewBox="18.899 98.165 16.789 22.385" version="1.1" xmlns="http://www.w3.org/2000/svg">
   <defs/>
   <g id="surface1" transform="matrix(0.62827, 0, 0, 0.676721, 7.218173, 38.836369)">
     <path style=" stroke:none;fill-rule:nonzero;fill:rgb(0%,0%,0%);fill-opacity:1;" d="M 31.40625 88.523438 C 31.3125 88.570312 
@@ -355,9 +356,9 @@
         </div>
 
                     <!-- SVG иконка ветряка -->
-        <div class="WindTurbineIcon" id="WindTurbineIcon">
+        <div class="icon WindTurbineIcon" id="WindTurbineIcon">
             <svg class="icon" xmlns="http://www.w3.org/2000/svg"
-            width="100" height="100" viewBox="0 0 512.000000 512.000000"
+            width="80" height="80" viewBox="0 0 512.000000 512.000000"
             preserveAspectRatio="xMidYMid meet" id="WindTurbineIcon">
 
             <g transform="translate(0.000000,512.000000) scale(0.100000,-0.100000)"
@@ -382,6 +383,32 @@
 
         </div>
 
+        <div class="FlyWheelIcon" id="FlyWheelIcon">
+            
+            <svg width="50" height="50" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" id="disk">
+                <!-- Первый сектор (верхний правый) -->
+                <path d="M100,100 L200,100 A100,100 0 0,0 100,0 Z" fill="red" />
+                <!-- Второй сектор (верхний левый) -->
+                <path d="M100,100 L100,0 A100,100 0 0,0 0,100 Z" fill="blue" />
+                <!-- Третий сектор (нижний левый) -->
+                <path d="M100,100 L0,100 A100,100 0 0,0 100,200 Z" fill="red" />
+                <!-- Четвёртый сектор (нижний правый) -->
+                <path d="M100,100 L100,200 A100,100 0 0,0 200,100 Z" fill="blue" />
+                
+                <!-- Окантовка круга -->
+                <circle cx="100" cy="100" r="100" fill="none" stroke="black" stroke-width="5" />
+              
+                <!-- Текст для первого сектора (верхний правый) -->
+                <text id="text1" x="150" y="50" font-size="12" fill="black" text-anchor="middle">Text 1</text>              
+                <!-- Текст для второго сектора (верхний левый) -->
+                <text id="text2" x="50" y="50" font-size="12" fill="white" text-anchor="middle">Text 2</text>
+                <!-- Текст для третьего сектора (нижний левый) -->
+                <text id="text3" x="50" y="150" font-size="12" fill="black" text-anchor="middle">Text 3</text>
+                <!-- Текст для четвёртого сектора (нижний правый) -->
+                <text id="text4" x="150" y="150" font-size="12" fill="white" text-anchor="middle">Text 4</text>
+              </svg>
+              
+        </div>
 
 
 
@@ -455,49 +482,8 @@
                 }
         </script>
 <script>
-    function saveLoadSettings() {
-        // Получаем значения из полей ввода модального окна для настройки нагрузки
-        const maxLoad = parseFloat(document.getElementById("maxLoad").value);  // Максимальная нагрузка (кВт)
-        const outputVoltage = parseFloat(document.getElementById("outputVoltage").value);  // Выходное напряжение (В)
-        const maxCurrentDifference = parseFloat(document.getElementById("maxCurrentDifference").value);  // Максимальная разница тока (А)
-
-        // Проверяем корректность введенных данных
-        if (isNaN(maxLoad) || isNaN(outputVoltage) || isNaN(maxCurrentDifference)) {
-            alert("Все поля должны быть заполнены корректными значениями.");
-            return;  // Выходим из функции, если данные некорректны
-        }
-
-        // Формируем строку в формате x-www-form-urlencoded
-        const urlEncodedData = `maxLoad=${encodeURIComponent(maxLoad)}&outputVoltage=${encodeURIComponent(outputVoltage)}&maxCurrentDifference=${encodeURIComponent(maxCurrentDifference)}`;
-
-        // Отправляем POST-запрос на сервер для сохранения настроек нагрузки
-        fetch('/post', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: urlEncodedData  // Передаем данные в формате x-www-form-urlencoded
-        })
-        .then(response => response.text())  // Ожидаем ответ в виде текста
-        .then(result => {
-            console.log('Success:', result);  // Логируем успешный результат
-
-            // Отображаем сообщение о подтверждении
-            document.getElementById("loadConfirmationMessage").innerText = "Настройки успешно сохранены!";
-            document.getElementById("loadConfirmationMessage").style.display = "block";  // Показываем сообщение
-            setTimeout(() => {
-                document.getElementById("loadConfirmationMessage").style.display = "none";  // Скрываем сообщение через 3 секунды
-            }, 3000);
-        })
-        .catch(error => {
-            console.error('Error:', error);  // Логируем ошибки
-        });
-    }
-
-    // Закрытие модального окна (если нужно)
-    //document.getElementById("closeLoadModal").onclick = function() {
-      //  document.getElementById("loadModal").style.display = "none";
-  //  }
+  
+   
 </script>
 
 <script>

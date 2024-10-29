@@ -1,4 +1,4 @@
 ../Core/Src/TUYA.c:10:10:calcCRC16	12	static
 ../Core/Src/TUYA.c:32:6:send_response	32	static
-../Core/Src/TUYA.c:69:6:process_received_data	40	static
-../Core/Src/TUYA.c:202:6:HAL_UART_TxCpltCallback	8	static
+../Core/Src/TUYA.c:69:6:process_received_data	96	static
+../Core/Src/TUYA.c:225:6:HAL_UART_TxCpltCallback	8	static

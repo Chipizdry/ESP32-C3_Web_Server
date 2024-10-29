@@ -89,8 +89,8 @@ void process_received_data(uint8_t *data, uint16_t length) {
     if(packet_type==0){
 
     	 // Если данные не обновлялись
-if (update_data == 0) {
-// Отправляем ответ «пульс» (без полезной нагрузки)
+        if (update_data == 0) {
+        // Отправляем ответ «пульс» (без полезной нагрузки)
 		uint8_t heartbeat[6];
 		heartbeat[0] = HEADER_1;
 		heartbeat[1] = HEADER_2;
@@ -101,7 +101,7 @@ if (update_data == 0) {
 		heartbeat[4] = crc & 0xFF;
 		heartbeat[5] = (crc >> 8) & 0xFF;
 		HAL_UART_Transmit_DMA(&huart1, heartbeat, 6);  // Передаем пакет
-}
+         }
 
 			// Если данные обновились
     	        else if (update_data == 1) {
@@ -137,7 +137,7 @@ if (update_data == 0) {
     }
 
     // Извлекаем полезную нагрузку
-    uint8_t *payload = &data[6];
+    uint8_t *payload = &data[32];
 
     // Обрабатываем команду
     switch (command) {
@@ -167,7 +167,7 @@ if (update_data == 0) {
                          load[5] = current_diff_value & 0xFF;         // Младший байт maxCurrentDifference
 
 
-                send_response(load, 6, 0x05);
+                send_response(load, 6, 0x04);
                // printf("Battery settings - Low: %.2f, High: %.2f, Max Current: %.2f\n", low, high, maxCurrent);
                }
             break;
@@ -185,10 +185,33 @@ if (update_data == 0) {
 
                 // Сохраняем в переменные или используем
                 // Пример: отображение значений
-                send_response(*payload, 6, 0x05);
+                send_response(*payload, 6, 0x06);
               //  printf("Load settings - Max Load: %.2f, Output Voltage: %.2f, Max Current Difference: %.2f\n", load, voltage, currentDiff);
                 }
               break;
+
+          case 0x14:  // Команда для IP конфигурации
+                   if (payload_len == 12) {  // Проверяем длину для IP, маски и шлюза
+                       uint32_t ip_addr = (payload[0] << 24) | (payload[1] << 16) | (payload[2] << 8) | payload[3];
+                       uint32_t netmask = (payload[4] << 24) | (payload[5] << 16) | (payload[6] << 8) | payload[7];
+                       uint32_t gateway = (payload[8] << 24) | (payload[9] << 16) | (payload[10] << 8) | payload[11];
+
+                       // Преобразование IP-адресов в строку (например, для отладки)
+                       char ip_str[16], netmask_str[16], gateway_str[16];
+                       snprintf(ip_str, sizeof(ip_str), "%lu.%lu.%lu.%lu",
+                                (ip_addr >> 24) & 0xFF, (ip_addr >> 16) & 0xFF, (ip_addr >> 8) & 0xFF, ip_addr & 0xFF);
+                       snprintf(netmask_str, sizeof(netmask_str), "%lu.%lu.%lu.%lu",
+                                (netmask >> 24) & 0xFF, (netmask >> 16) & 0xFF, (netmask >> 8) & 0xFF, netmask & 0xFF);
+                       snprintf(gateway_str, sizeof(gateway_str), "%lu.%lu.%lu.%lu",
+                                (gateway >> 24) & 0xFF, (gateway >> 16) & 0xFF, (gateway >> 8) & 0xFF, gateway & 0xFF);
+
+                       // Обработка IP-адресов или сохранение
+                       // Например: отладочный вывод
+                       printf("Received IP Config - IP: %s, Netmask: %s, Gateway: %s\n", ip_str, netmask_str, gateway_str);
+
+                       // Добавить вашу логику обработки IP данных
+                   }
+                   break;
 
         default:
             // Обработка других команд

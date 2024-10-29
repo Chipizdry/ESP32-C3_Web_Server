@@ -142,23 +142,17 @@ footer {
     margin: 20px 0;
 }
 
-.icon {
-    text-align: center;
-}
-
-.icon svg {
-    margin-bottom: 10px;
-} 
 
 
 #control {
     position: relative; /* Относительное позиционирование для контейнера */
 }
 
+
 .icon {
     position: absolute; /* Абсолютное позиционирование для иконок */
     text-align: center; /* Центрирование текста под иконкой */
-}
+} 
 
 .battery-icon {
     top: 27px;  /* Вертикальная позиция */
@@ -178,6 +172,11 @@ footer {
 .power-icon {
     top: 25px;
     left: 250px;
+}
+
+.WindTurbineIcon {
+    top: 125px;
+    left: 1px;
 }
 
 .icon svg {

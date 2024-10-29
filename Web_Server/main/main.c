@@ -549,7 +549,7 @@ esp_err_t get_ip_handler(httpd_req_t *req) {
     if (res != ESP_OK) {
         ESP_LOGE("IP_HANDLER", "Failed to send response: %s", esp_err_to_name(res));
     }
-send_ip_config_command();
+//send_ip_config_command();
     return res;
 }
 
@@ -1196,7 +1196,10 @@ esp_err_t file_get_handler(httpd_req_t *req) {
 	    snprintf(filepath, sizeof(filepath), "/littlefs/index.html");
 		} else if (strcmp(req->uri, "/scripts.js") == 0) {
 		    snprintf(filepath, sizeof(filepath), "/littlefs/scripts.js");
-		} else {
+		} else if (strcmp(req->uri, "/power-settings.js") == 0) {
+		    snprintf(filepath, sizeof(filepath), "/littlefs/power-settings.js");
+		}
+		else {
 		    snprintf(filepath, sizeof(filepath), "/littlefs%s", req->uri);
 		}
 	    ESP_LOGI(TAG, "Requested URI: %s, Filepath: %s", req->uri, filepath);
@@ -1285,6 +1288,16 @@ httpd_handle_t start_webserver(void) {
 		            .user_ctx = NULL
 		        };
 		        httpd_register_uri_handler(server, &script_get_uri);
+		        
+		     
+		   // Обработчик для JavaScript
+		        httpd_uri_t ps_script_get_uri = {
+		            .uri = "/power-settings.js",  // Обработка JavaScript
+		            .method = HTTP_GET,
+		            .handler = file_get_handler,
+		            .user_ctx = NULL
+		        };
+		        httpd_register_uri_handler(server, &ps_script_get_uri);   
    
 			   // Регистрация URI-обработчика
 			    httpd_uri_t data_uri = {
