@@ -69,9 +69,9 @@ function updateBatteryFill(level) {
     const batteryFill = document.getElementById('batteryFill');
     
     // Рассчитываем сдвиг по оси X относительно уровня заряда
-    const maxFillWidth = 270; // максимальная ширина батареи
+    const maxFillWidth = 3300; // максимальная ширина батареи
     const fillWidth = (level / 100) * maxFillWidth;
-    const xPosition = 35 + (maxFillWidth - fillWidth); // сдвиг вправо по мере разряда
+    const xPosition = 320 + (maxFillWidth - fillWidth); // сдвиг вправо по мере разряда
 
     // Меняем x-координату и ширину заливки
     batteryFill.setAttribute('x', xPosition);
@@ -104,16 +104,19 @@ setInterval(() => {
                 const inverterModal = document.getElementById('inverterModal');
                 const loadModal = document.getElementById('loadSettingsModal');
                 const WindTurbineModal= document.getElementById(`WindTurbineModal`);
+                const FlyWheelModal = document.getElementById('FlyWheelModal');
                 // Получаем иконки
                 const batteryIcon = document.getElementById('batteryIcon');
                 const inverterIcon = document.getElementById('inverterIcon');
                 const loadIcon = document.getElementById('loadIcon'); 
                 const WindTurbineIcon= document.getElementById(`WindTurbineIcon`);
+                const FlyWheelIcon = document.getElementById('FlyWheelIcon');
                 // Получаем кнопки закрытия модальных окон 
                 const closeBattery = document.getElementById('closeBattery');
                 const closeInverter = document.getElementById('closeInverter');
                 const closeLoad = document.getElementById('closeLoadSettings');
                 const closeWindTurbine = document.getElementById(`closeWindTurbine`);
+                const closeFlyWheel = document.getElementById('closeFlyWheel');
                 // Открытие модального окна для батареи
                 batteryIcon.onclick = function() {
                     batteryModal.style.display = 'flex';
@@ -132,7 +135,11 @@ setInterval(() => {
                   WindTurbineIcon.onclick = function() {
                     WindTurbineModal.style.display = 'flex';
                 }
-
+               
+                 // Открытие модального окна для FlyWheel
+                 FlyWheelIcon.onclick = function() {
+                    FlyWheelModal.style.display = 'flex';
+                }
                 // Закрытие модальных окон
                 closeBattery.onclick = function() {
                     batteryModal.style.display = 'none';
@@ -145,6 +152,10 @@ setInterval(() => {
                 }
                 closeWindTurbine.onclick = function() {
                     WindTurbineModal.style.display = 'none'; 
+                }
+
+                closeFlyWheel.onclick = function() {
+                    FlyWheelModal.style.display = 'none';
                 }
                 // Закрытие модального окна при клике вне его
 
@@ -160,6 +171,9 @@ setInterval(() => {
                     }
                     if (event.target == WindTurbineModal) { 
                         WindTurbineModal.style.display = 'none';
+                    }
+                    if (event.target == FlyWheelModal) { 
+                        FlyWheelModal.style.display = 'none';
                     }
                 }
             });
