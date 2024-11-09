@@ -2,34 +2,34 @@
 	"sources" : 
 	[
 		{
-			"file" : "G:/Espressif_work/Web_Server/build/CMakeFiles/bootloader"
+			"file" : "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/CMakeFiles/bootloader"
 		},
 		{
-			"file" : "G:/Espressif_work/Web_Server/build/CMakeFiles/bootloader.rule"
+			"file" : "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/CMakeFiles/bootloader.rule"
 		},
 		{
-			"file" : "G:/Espressif_work/Web_Server/build/CMakeFiles/bootloader-complete.rule"
+			"file" : "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/CMakeFiles/bootloader-complete.rule"
 		},
 		{
-			"file" : "G:/Espressif_work/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule"
+			"file" : "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule"
 		},
 		{
-			"file" : "G:/Espressif_work/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule"
+			"file" : "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule"
 		},
 		{
-			"file" : "G:/Espressif_work/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule"
+			"file" : "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule"
 		},
 		{
-			"file" : "G:/Espressif_work/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule"
+			"file" : "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule"
 		},
 		{
-			"file" : "G:/Espressif_work/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule"
+			"file" : "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule"
 		},
 		{
-			"file" : "G:/Espressif_work/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule"
+			"file" : "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule"
 		},
 		{
-			"file" : "G:/Espressif_work/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule"
+			"file" : "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule"
 		}
 	],
 	"target" : 

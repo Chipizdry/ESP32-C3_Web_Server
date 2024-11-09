@@ -1,4 +1,4 @@
-# Install script for directory: G:/Espressif/frameworks/esp-idf-v5.3.1/components/mbedtls/mbedtls/3rdparty
+# Install script for directory: D:/Espressif/frameworks/esp-idf-v5.3.1/v5.3.1/esp-idf/components/mbedtls/mbedtls/3rdparty
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,13 +34,13 @@ endif()
 
 # Set default install directory permissions.
 if(NOT DEFINED CMAKE_OBJDUMP)
-  set(CMAKE_OBJDUMP "G:/Espressif/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/bin/riscv32-esp-elf-objdump.exe")
+  set(CMAKE_OBJDUMP "C:/Users/chipi/.espressif/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/bin/riscv32-esp-elf-objdump.exe")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("G:/Espressif_work/Web_Server/build/esp-idf/mbedtls/mbedtls/3rdparty/everest/cmake_install.cmake")
-  include("G:/Espressif_work/Web_Server/build/esp-idf/mbedtls/mbedtls/3rdparty/p256-m/cmake_install.cmake")
+  include("D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/mbedtls/mbedtls/3rdparty/everest/cmake_install.cmake")
+  include("D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/mbedtls/mbedtls/3rdparty/p256-m/cmake_install.cmake")
 
 endif()
 

@@ -1,4 +1,4 @@
-# Install script for directory: G:/Espressif_work/Web_Server/managed_components/joltwallet__littlefs
+# Install script for directory: D:/GitHub/ESP32-C3_Web_Server/Web_Server/managed_components/joltwallet__littlefs
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,6 +34,6 @@ endif()
 
 # Set default install directory permissions.
 if(NOT DEFINED CMAKE_OBJDUMP)
-  set(CMAKE_OBJDUMP "G:/Espressif/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/bin/riscv32-esp-elf-objdump.exe")
+  set(CMAKE_OBJDUMP "C:/Users/chipi/.espressif/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/bin/riscv32-esp-elf-objdump.exe")
 endif()
 

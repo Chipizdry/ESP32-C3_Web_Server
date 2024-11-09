@@ -41,6 +41,7 @@
 #define AP_NETMASK "255.255.255.0"
 #define STORAGE_NAMESPACE "storage"
 
+#define MAX_CLIENTS 5  // Максимальное количество одновременных подключений
 
 #define BOUNDARY_SUFFIX "\r\n"
 
@@ -85,10 +86,10 @@ device_settings_t default_settings = {
     .max_current = 1.0,
     .voltage_limit = 12,
     .speed_limit = 1500,
-    .wifi_ssid = "Medical",
-    .wifi_password = "0445026833",
- //   .wifi_ssid = "TP-Link_FA4F",
- //   .wifi_password = "19481555",
+  //  .wifi_ssid = "Medical",
+  //  .wifi_password = "0445026833",
+    .wifi_ssid = "TP-Link_FA4F",
+    .wifi_password = "19481555",
     .wifi_ap_ssid = "TP-Link_FA4F",
     .wifi_ap_password = "19481555",
     .wifi_mode = "STA",
@@ -98,6 +99,12 @@ device_settings_t default_settings = {
 };
 
 
+typedef struct {
+    char token[33];    // Токен
+    bool is_active;    // Флаг активности
+} client_token_t;
+
+client_token_t clients[MAX_CLIENTS];
 // Структура для данных
 typedef struct {
     float voltage[3];  // Массив для трех фаз напряжения
@@ -1188,7 +1195,58 @@ esp_err_t data_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+// Функция добавления токена клиента
+bool add_client_token(const char *token) {
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (!clients[i].is_active) {  // Ищем неактивный слот
+            strcpy(clients[i].token, token);  // Копируем токен в массив
+            clients[i].is_active = true;      // Отмечаем сессию как активную
+            return true;                      // Токен успешно добавлен
+        }
+    }
+    return false;  // Нет свободных слотов для добавления нового токена
+}
 
+
+bool is_max_clients_reached() {
+    int active_clients = 0;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].is_active) {
+            active_clients++;
+        }
+    }
+    return active_clients >= MAX_CLIENTS;
+}
+// Функция для генерации токена (в данном случае простой случайный токен)
+char *generate_token() {
+    static char token[33];
+    for (int i = 0; i < 32; i++) {
+        token[i] = 'A' + (rand() % 26);
+    }
+    token[32] = '\0';
+    return token;
+}
+
+
+// Реализация httpd_resp_send_503
+esp_err_t httpd_resp_send_503(httpd_req_t *req) {
+    httpd_resp_set_status(req, "503 Service Unavailable");  // Устанавливаем статус 503
+    httpd_resp_set_type(req, "text/plain");                 // Устанавливаем тип контента
+    return httpd_resp_sendstr(req, "Server overloaded, please try again later.");
+}
+
+esp_err_t login_handler(httpd_req_t *req) {
+    if (is_max_clients_reached()) {
+        httpd_resp_send_503(req);  // Ошибка, сервер перегружен
+        return ESP_FAIL;
+    }
+
+    // Генерация токена и добавление клиента в активные
+    char *token = generate_token();
+    add_client_token(token);
+    httpd_resp_sendstr(req, token);  // Возвращаем токен
+    return ESP_OK;
+}
 
 esp_err_t file_get_handler(httpd_req_t *req) {
     char filepath[522];
@@ -1351,18 +1409,25 @@ httpd_handle_t start_webserver(void) {
             };
             httpd_register_uri_handler(server, &save_wifi_settings_uri);
 
+            httpd_uri_t login_uri = {
+                .uri = "/login",
+                .method = HTTP_POST,
+                .handler = login_handler,
+                .user_ctx = NULL
+            };
+            httpd_register_uri_handler(server, &login_uri);
        
-	      httpd_uri_t ota_post_uri = {
-            .uri       = "/ota",
-            .method    = HTTP_POST,
-            .handler   = ota_post_handler,
-            .user_ctx  = NULL
-               };
-             if (httpd_register_uri_handler(server, &ota_post_uri) == ESP_OK) {
-            ESP_LOGI(TAG, "OTA POST handler registered at URI: /ota");
-        } else {
-            ESP_LOGE(TAG, "Failed to register OTA POST handler");
-        }
+            httpd_uri_t ota_post_uri = {
+                .uri       = "/ota",
+                .method    = HTTP_POST,
+                .handler   = ota_post_handler,
+                .user_ctx  = NULL
+                };
+                if (httpd_register_uri_handler(server, &ota_post_uri) == ESP_OK) {
+                ESP_LOGI(TAG, "OTA POST handler registered at URI: /ota");
+            } else {
+                ESP_LOGE(TAG, "Failed to register OTA POST handler");
+            }
     
 
     } else {

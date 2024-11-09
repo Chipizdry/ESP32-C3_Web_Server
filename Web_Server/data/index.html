@@ -141,10 +141,11 @@
                 </div>
         
                 <!-- Переключатели для обмоток -->
-                <div class="coil-switches">
-                    <h3>Управление обмотками</h3>
+            <div class="coil-switches">
+                <h3>Управление обмотками</h3>
+                <div class="switches-container">
                     <label class="switch">
-                        <input type="checkbox" id="coil1">
+                        <input type="checkbox" id="coil1"> 
                         <span class="slider"></span> Обмотка 1
                     </label>
                     <label class="switch">
@@ -159,7 +160,24 @@
                         <input type="checkbox" id="coil4">
                         <span class="slider"></span> Обмотка 4
                     </label>
+                    <label class="switch">
+                        <input type="checkbox" id="coil5"> 
+                        <span class="slider"></span> Обмотка 5
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="coil6">
+                        <span class="slider"></span> Обмотка 6
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="coil7">
+                        <span class="slider"></span> Обмотка 7
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="coil8">
+                        <span class="slider"></span> Обмотка 8
+                    </label>
                 </div>
+            </div>
                 <button id="saveLoadSettings" onclick="saveFlyWheelSettings()">Сохранить</button>
                 <div id="loadConfirmationMessage" style="margin-top: 10px; color: rgb(11, 226, 11); display: none;"></div>
             </div> 
@@ -647,6 +665,7 @@
                 alert("Неверный логин или пароль");
             }
         }
+        
     */
     
     

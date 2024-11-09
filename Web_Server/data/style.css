@@ -320,6 +320,13 @@ button:hover {
     background-color: #337e37;
 }
 
+.switches-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
 .flywheel-data p, .coil-switches h3 {
     margin: 10px 0;
 }

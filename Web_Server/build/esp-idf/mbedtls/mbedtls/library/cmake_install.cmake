@@ -1,4 +1,4 @@
-# Install script for directory: G:/Espressif/frameworks/esp-idf-v5.3.1/components/mbedtls/mbedtls/library
+# Install script for directory: D:/Espressif/frameworks/esp-idf-v5.3.1/v5.3.1/esp-idf/components/mbedtls/mbedtls/library
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,18 +34,18 @@ endif()
 
 # Set default install directory permissions.
 if(NOT DEFINED CMAKE_OBJDUMP)
-  set(CMAKE_OBJDUMP "G:/Espressif/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/bin/riscv32-esp-elf-objdump.exe")
+  set(CMAKE_OBJDUMP "C:/Users/chipi/.espressif/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/bin/riscv32-esp-elf-objdump.exe")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "G:/Espressif_work/Web_Server/build/esp-idf/mbedtls/mbedtls/library/libmbedcrypto.a")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/mbedtls/mbedtls/library/libmbedcrypto.a")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "G:/Espressif_work/Web_Server/build/esp-idf/mbedtls/mbedtls/library/libmbedx509.a")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/mbedtls/mbedtls/library/libmbedx509.a")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "G:/Espressif_work/Web_Server/build/esp-idf/mbedtls/mbedtls/library/libmbedtls.a")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/mbedtls/mbedtls/library/libmbedtls.a")
 endif()
 
