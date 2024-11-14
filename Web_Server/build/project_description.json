@@ -1,7 +1,7 @@
 {
     "version":            "1.1",
     "project_name":       "Web_Server",
-    "project_version":    "985f207-dirty",
+    "project_version":    "f7b64bd-dirty",
     "project_path":       "D:/GitHub/ESP32-C3_Web_Server/Web_Server",
     "idf_path":           "D:/Espressif/frameworks/esp-idf-v5.3.1/v5.3.1/esp-idf",
     "build_dir":          "D:/GitHub/ESP32-C3_Web_Server/Web_Server/build",

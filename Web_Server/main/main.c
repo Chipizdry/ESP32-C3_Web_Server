@@ -11,6 +11,7 @@
 #include <esp_event.h>
 #include <esp_wifi.h>
 #include <esp_http_server.h>
+#include "esp_http_client.h"
 #include <nvs_flash.h>
 #include "esp_partition.h"
 #include "esp_littlefs.h"
@@ -27,6 +28,8 @@
 #include "freertos/queue.h"
 #include "esp_intr_alloc.h"
 #include <time.h>
+//#include <cJSON.h>
+#include <inttypes.h>
 #include "lwip/ip4_addr.h"
 #include "soc/gpio_num.h"
 #include "uart.h"
@@ -65,6 +68,8 @@ static int32_t rssi=0;
  
 static uint8_t request[64];  // Буфер для запроса 
 
+static void perform_http_request(void);
+static void perform_https_request(void);
 static const char *TAG = "web_server";
 // Структура для хранения всех настроек
 typedef struct {
@@ -86,10 +91,10 @@ device_settings_t default_settings = {
     .max_current = 1.0,
     .voltage_limit = 12,
     .speed_limit = 1500,
-  //  .wifi_ssid = "Medical",
-  //  .wifi_password = "0445026833",
-    .wifi_ssid = "TP-Link_FA4F",
-    .wifi_password = "19481555",
+    .wifi_ssid = "Medical",
+    .wifi_password = "0445026833",
+  //  .wifi_ssid = "TP-Link_FA4F",
+  //  .wifi_password = "19481555",
     .wifi_ap_ssid = "TP-Link_FA4F",
     .wifi_ap_password = "19481555",
     .wifi_mode = "STA",
@@ -474,6 +479,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
             case IP_EVENT_STA_GOT_IP: {
                 ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
                 ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+                 perform_http_request();
                 break;
             }
             default:
@@ -1365,7 +1371,7 @@ httpd_handle_t start_webserver(void) {
 			    .user_ctx = NULL
 		        };
 		
-		      httpd_register_uri_handler(server, &data_uri);
+		        httpd_register_uri_handler(server, &data_uri);
 					
 				httpd_uri_t get_ip_uri = {
 				    .uri = "/get_ip",
@@ -1373,10 +1379,10 @@ httpd_handle_t start_webserver(void) {
 				    .handler = get_ip_handler,
 				    .user_ctx = NULL
 				};
-			httpd_register_uri_handler(server, &get_ip_uri);
+			    httpd_register_uri_handler(server, &get_ip_uri);
 						
 						
-			httpd_uri_t favicon_uri = {
+			     httpd_uri_t favicon_uri = {
 			    .uri = "/favicon.png",
 			    .method = HTTP_GET,
 			    .handler = file_get_handler,
@@ -1435,6 +1441,62 @@ httpd_handle_t start_webserver(void) {
     }
 
     return server;
+}
+
+
+
+
+static void perform_http_request(void) {
+    esp_http_client_config_t config = {
+        .url = "http://195.8.40.51:8080/api/auth/login",  // Укажите URL
+        .method = HTTP_METHOD_POST,
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+
+    // Пример данных для отправки в запросе (например, логин и пароль)
+    const char *post_data = "username=chipizdry@gmail.com&password=12345678";
+    esp_http_client_set_header(client, "Content-Type", "application/x-www-form-urlencoded");
+    esp_http_client_set_post_field(client, post_data, strlen(post_data));
+
+    esp_err_t err = esp_http_client_perform(client);
+
+          if (err == ESP_OK) {
+            ESP_LOGI(TAG, "HTTP Status = %" PRId64 ", content_length = %" PRId64,
+                    (int64_t)esp_http_client_get_status_code(client),
+                    (int64_t)esp_http_client_get_content_length(client));
+                        } else {
+                            ESP_LOGE(TAG, "HTTP request failed: %s", esp_err_to_name(err));
+                        }
+
+    esp_http_client_cleanup(client);
+}
+
+static void perform_https_request(void) {
+    esp_http_client_config_t config = {
+        .url = "http://195.8.40.51:8080/api/auth/login", // Замените на ваш URL
+        .method = HTTP_METHOD_POST,
+        .cert_pem = "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----", // Сертификат сервера для HTTPS
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+
+    // Пример данных для отправки в запросе (например, логин и пароль)
+    const char *post_data = "username=your_username&password=your_password";
+    esp_http_client_set_header(client, "Content-Type", "application/x-www-form-urlencoded");
+    esp_http_client_set_post_field(client, post_data, strlen(post_data));
+
+    esp_err_t err = esp_http_client_perform(client);
+
+       if (err == ESP_OK) {
+            ESP_LOGI(TAG, "HTTP Status = %" PRId64 ", content_length = %" PRId64,
+                    (int64_t)esp_http_client_get_status_code(client),
+                    (int64_t)esp_http_client_get_content_length(client));
+                        } else {
+                            ESP_LOGE(TAG, "HTTP request failed: %s", esp_err_to_name(err));
+                        }
+
+    esp_http_client_cleanup(client);
 }
 
 void app_main(void) {

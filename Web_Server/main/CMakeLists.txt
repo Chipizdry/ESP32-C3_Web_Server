@@ -11,6 +11,7 @@ idf_component_register(
        esp_http_client
         app_update 
         driver 
+        esp_http_client cJSON
 )
 set(PARTITION_TABLE csv)
 set(PARTITION_TABLE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/partitions.csv")
