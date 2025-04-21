@@ -11,7 +11,7 @@
 #include <esp_event.h>
 #include <esp_wifi.h>
 #include <esp_http_server.h>
-#include "esp_http_client.h"
+//#include "esp_http_client.h"
 #include "esp_websocket_client.h"
 #include <nvs_flash.h>
 #include "esp_partition.h"
@@ -71,8 +71,8 @@ static int32_t rssi=0;
  
 static uint8_t request[64];  // Буфер для запроса 
 
-static void perform_http_request(void);
-static void perform_https_request(void);
+//static void perform_http_request(void);
+//static void perform_https_request(void);
 static const char *TAG = "web_server";
 // Структура для хранения всех настроек
 typedef struct {
@@ -482,7 +482,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
             case IP_EVENT_STA_GOT_IP: {
                 ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
                 ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
-                 perform_http_request();
+               //  perform_http_request();
                 break;
             }
             default:
@@ -1446,6 +1446,7 @@ httpd_handle_t start_webserver(void) {
     return server;
 }
 
+/*
 // Функция для получения и вывода заголовков
 void get_http_header_example(esp_http_client_handle_t client) {
     // Переменная для хранения значения заголовка
@@ -1463,9 +1464,9 @@ void get_http_header_example(esp_http_client_handle_t client) {
     } else {
         ESP_LOGE(TAG, "Content-Type header not found or error occurred");
     }
-}
+}  */
 
-
+/*
 
 static void perform_http_request(void) {
     esp_http_client_config_t config = {
@@ -1573,7 +1574,7 @@ static void perform_https_request(void) {
 
     esp_http_client_cleanup(client);
 }
-
+*/
 void app_main(void) {
 	 
      // Инициализация NVS
