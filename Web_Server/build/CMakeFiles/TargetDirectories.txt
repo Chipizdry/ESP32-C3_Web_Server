@@ -721,6 +721,13 @@ D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_local_ctrl/CMakeFiles
 D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_local_ctrl/CMakeFiles/install.dir
 D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_local_ctrl/CMakeFiles/install/local.dir
 D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_local_ctrl/CMakeFiles/install/strip.dir
+D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_websocket_client/CMakeFiles/__idf_esp_websocket_client.dir
+D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_websocket_client/CMakeFiles/edit_cache.dir
+D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_websocket_client/CMakeFiles/rebuild_cache.dir
+D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_websocket_client/CMakeFiles/list_install_components.dir
+D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_websocket_client/CMakeFiles/install.dir
+D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_websocket_client/CMakeFiles/install/local.dir
+D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_websocket_client/CMakeFiles/install/strip.dir
 D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir
 D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/espcoredump/CMakeFiles/edit_cache.dir
 D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/espcoredump/CMakeFiles/rebuild_cache.dir

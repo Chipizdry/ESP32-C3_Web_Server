@@ -1,8 +1,9 @@
 {
     "idf.adapterTargetName": "esp32c3",
     "idf.flashType": "UART",
-    "idf.portWin": "COM3",
+    "idf.portWin": "COM9",
     "idf.openOcdConfigs": [
-        "board/esp32c3-ftdi.cfg"
+        "interface/ftdi/esp32_devkitj_v1.cfg",
+        "target/esp32.cfg"
     ]
 }

@@ -67,6 +67,7 @@ D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_lcd/libesp_lcd.a
 D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/protobuf-c/libprotobuf-c.a
 D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/protocomm/libprotocomm.a
 D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_local_ctrl/libesp_local_ctrl.a
+D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/esp_websocket_client/libesp_websocket_client.a
 D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/espcoredump/libespcoredump.a
 D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/wear_levelling/libwear_levelling.a
 D:/GitHub/ESP32-C3_Web_Server/Web_Server/build/esp-idf/fatfs/libfatfs.a

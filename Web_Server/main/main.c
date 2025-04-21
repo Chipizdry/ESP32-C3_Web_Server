@@ -12,6 +12,7 @@
 #include <esp_wifi.h>
 #include <esp_http_server.h>
 #include "esp_http_client.h"
+#include "esp_websocket_client.h"
 #include <nvs_flash.h>
 #include "esp_partition.h"
 #include "esp_littlefs.h"
@@ -28,11 +29,12 @@
 #include "freertos/queue.h"
 #include "esp_intr_alloc.h"
 #include <time.h>
-//#include <cJSON.h>
+#include <cJSON.h>
 #include <inttypes.h>
 #include "lwip/ip4_addr.h"
 #include "soc/gpio_num.h"
 #include "uart.h"
+#include "mbedtls/base64.h"
 
 // Статический IP и параметры Wi-Fi AP
 #define AP_SSID_PREFIX "FlyWheel-"  // Префикс для SSID
@@ -51,6 +53,7 @@
 #define BOUNDARY_PREFIX "------WebKitFormBoundary"
 
 #define RESET_PIN GPIO_NUM_0  // Выберите нужный пин, например, GPIO 0
+#define MAX_HTTP_OUTPUT_BUFFER 512
 
 // Размер очереди
 //#define QUEUE_SIZE 10
@@ -93,10 +96,10 @@ device_settings_t default_settings = {
     .speed_limit = 1500,
     .wifi_ssid = "Medical",
     .wifi_password = "0445026833",
-  //  .wifi_ssid = "TP-Link_FA4F",
-  //  .wifi_password = "19481555",
-    .wifi_ap_ssid = "TP-Link_FA4F",
-    .wifi_ap_password = "19481555",
+   // .wifi_ssid = "TP-Link_FA4F",
+   // .wifi_password = "19481555",
+    .wifi_ap_ssid = "Medical",
+    .wifi_ap_password = "0445026833",
     .wifi_mode = "STA",
     .ap_ip = "192.168.1.1",
     .ap_netmask = "255.255.255.0",
@@ -1443,6 +1446,24 @@ httpd_handle_t start_webserver(void) {
     return server;
 }
 
+// Функция для получения и вывода заголовков
+void get_http_header_example(esp_http_client_handle_t client) {
+    // Переменная для хранения значения заголовка
+    char *header_value = NULL;
+
+    // Пример получения заголовка Content-Type
+    esp_err_t err = esp_http_client_get_header(client, "Content-Type", &header_value);
+
+        // Получение заголовков
+        const char *content_type = esp_http_client_get_header(client, "Content-Type", &header_value);
+        const char *content_length = esp_http_client_get_header(client, "Content-Type", &header_value);
+    
+    if (err == ESP_OK && header_value != NULL) {
+        ESP_LOGI(TAG, "Content-Type: %s", header_value);
+    } else {
+        ESP_LOGE(TAG, "Content-Type header not found or error occurred");
+    }
+}
 
 
 
@@ -1450,6 +1471,8 @@ static void perform_http_request(void) {
     esp_http_client_config_t config = {
         .url = "http://195.8.40.51:8080/api/auth/login",  // Укажите URL
         .method = HTTP_METHOD_POST,
+      
+        .timeout_ms = 5000,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -1457,24 +1480,76 @@ static void perform_http_request(void) {
     // Пример данных для отправки в запросе (например, логин и пароль)
     const char *post_data = "username=chipizdry@gmail.com&password=12345678";
     esp_http_client_set_header(client, "Content-Type", "application/x-www-form-urlencoded");
+    esp_http_client_set_header(client, "Accept", "application/json");
     esp_http_client_set_post_field(client, post_data, strlen(post_data));
 
     esp_err_t err = esp_http_client_perform(client);
 
-          if (err == ESP_OK) {
-            ESP_LOGI(TAG, "HTTP Status = %" PRId64 ", content_length = %" PRId64,
-                    (int64_t)esp_http_client_get_status_code(client),
-                    (int64_t)esp_http_client_get_content_length(client));
-                        } else {
-                            ESP_LOGE(TAG, "HTTP request failed: %s", esp_err_to_name(err));
-                        }
+    if (err == ESP_OK) {
+        esp_http_client_fetch_headers(client);
+        int content_length = esp_http_client_get_content_length(client);
+        ESP_LOGI(TAG, "HTTP Status = %" PRId64 ", content_length = %" PRId64,
+                 (int64_t)esp_http_client_get_status_code(client),
+                 (int64_t)content_length);
+
+      char *content_type = NULL;
+    esp_err_t header_err = esp_http_client_get_header(client, "Content-Type", &content_type);
+
+    if (header_err == ESP_OK && content_type) {
+        ESP_LOGI(TAG, "Content-Type: %s", content_type);
+    } else {
+        ESP_LOGW(TAG, "Content-Type header not found");
+    }
+
+       
+ 
+
+        // Чтение ответа с использованием esp_http_client_read
+        if (content_length > 0) {
+            char *response_buffer = malloc(content_length + 1);  // +1 для \0
+            if (response_buffer) {
+                int total_read_len = 0;
+                int remaining_len = content_length;
+                while (remaining_len > 0) {
+                    int read_len = esp_http_client_read(client, response_buffer + total_read_len, remaining_len);
+                    if (read_len <= 0) {
+                        ESP_LOGE(TAG, "Error reading response");
+                        break;
+                    }
+                    total_read_len += read_len;
+                    remaining_len -= read_len;
+                }
+                response_buffer[total_read_len] = '\0';  // Завершаем строку
+                ESP_LOGI(TAG, "Response: %s", response_buffer);
+
+                // Разбираем полученную строку как данные x-www-form-urlencoded
+                char *access_token = strstr(response_buffer, "access_token=");
+                if (access_token) {
+                    access_token += strlen("access_token=");  // Пропускаем часть ключа
+                    char *end_token = strchr(access_token, '&');
+                    if (end_token) {
+                        *end_token = '\0';  // Обрезаем строку на символе '&'
+                    }
+                    ESP_LOGI(TAG, "Access Token: %s", access_token);
+                }
+
+                free(response_buffer);
+            } else {
+                ESP_LOGE(TAG, "Failed to allocate memory for response buffer");
+            }
+        }
+    } else {
+        ESP_LOGE(TAG, "HTTP request failed: %s", esp_err_to_name(err));
+    }
+
 
     esp_http_client_cleanup(client);
 }
+ 
 
 static void perform_https_request(void) {
     esp_http_client_config_t config = {
-        .url = "http://195.8.40.51:8080/api/auth/login", // Замените на ваш URL
+        .url = "http://195.8.40.51:8080/api/auth/login", 
         .method = HTTP_METHOD_POST,
         .cert_pem = "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----", // Сертификат сервера для HTTPS
     };

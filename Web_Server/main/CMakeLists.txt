@@ -9,9 +9,10 @@ idf_component_register(
       nvs_flash 
       littlefs
        esp_http_client
+       esp_websocket_client
         app_update 
         driver 
-        esp_http_client cJSON
+        esp_http_client json
 )
 set(PARTITION_TABLE csv)
 set(PARTITION_TABLE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/partitions.csv")

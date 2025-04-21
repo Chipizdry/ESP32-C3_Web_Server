@@ -11,7 +11,7 @@
 #include "esp_netif.h"
 // Определите пины для UART
 #define TXD_PIN (GPIO_NUM_10)  // Передача данных (TX)
-#define RXD_PIN (GPIO_NUM_9)  // Приём данных (RX)
+#define RXD_PIN (GPIO_NUM_8)  // Приём данных (RX)
 #define RTS_PIN (UART_PIN_NO_CHANGE)  // Управление передачей данных (опционально)
 
 #define UART_PORT_NUM      UART_NUM_1
