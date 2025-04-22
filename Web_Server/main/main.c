@@ -11,7 +11,6 @@
 #include <esp_event.h>
 #include <esp_wifi.h>
 #include <esp_http_server.h>
-//#include "esp_http_client.h"
 #include "esp_websocket_client.h"
 #include <nvs_flash.h>
 #include "esp_partition.h"
@@ -34,6 +33,7 @@
 #include "lwip/ip4_addr.h"
 #include "soc/gpio_num.h"
 #include "uart.h"
+#include "websocket_client.h"
 #include "mbedtls/base64.h"
 
 // Статический IP и параметры Wi-Fi AP
@@ -55,8 +55,8 @@
 #define RESET_PIN GPIO_NUM_0  // Выберите нужный пин, например, GPIO 0
 #define MAX_HTTP_OUTPUT_BUFFER 512
 
-// Размер очереди
-//#define QUEUE_SIZE 10
+// Глобальная переменная WebSocket клиента
+websocket_client_t ws_client;
 httpd_handle_t server_handle = NULL;
 
 static bool netif_initialized = false;
@@ -68,11 +68,7 @@ esp_ota_handle_t ota_handle = 0;
 static bool ota_started = false;
 static int total_received = 0;  // Общее количество полученных байт
 static int32_t rssi=0;
- 
 static uint8_t request[64];  // Буфер для запроса 
-
-//static void perform_http_request(void);
-//static void perform_https_request(void);
 static const char *TAG = "web_server";
 // Структура для хранения всех настроек
 typedef struct {
@@ -123,9 +119,6 @@ typedef struct {
     int signal_strength; // Сигнал (RSSI)
 } sensor_data_t;
 
-//static QueueHandle_t uart_command_queue;
-
-// Объявляем мьютекс
 SemaphoreHandle_t uart_mutex;
 
 uint8_t rx_buffer[RX_BUFFER_SIZE];
@@ -482,9 +475,18 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
             case IP_EVENT_STA_GOT_IP: {
                 ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
                 ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
-               //  perform_http_request();
+               
+                if (!ws_client.is_connected) {
+                    websocket_client_connect(&ws_client);
+                }
+                
+
+
                 break;
             }
+
+
+
             default:
                 break;
         }
@@ -1446,6 +1448,17 @@ httpd_handle_t start_webserver(void) {
     return server;
 }
 
+
+void websocket_send_task(void *pvParameters) {
+    while (1) {
+        if (ws_client.is_connected) {
+            char msg[128];
+            snprintf(msg, sizeof(msg), "{\"rssi\": %d}", rssi);
+            websocket_client_send(&ws_client, msg);
+        }
+        vTaskDelay(pdMS_TO_TICKS(5000));
+    }
+}
 /*
 // Функция для получения и вывода заголовков
 void get_http_header_example(esp_http_client_handle_t client) {
@@ -1612,6 +1625,9 @@ void app_main(void) {
  
     start_webserver();
     
+
+    websocket_client_init(&ws_client, "ws://your-websocket-server.com");
+    websocket_client_connect(&ws_client);
     // Инициализация мьютекса
     uart_mutex = xSemaphoreCreateMutex();
     if (uart_mutex == NULL) {
