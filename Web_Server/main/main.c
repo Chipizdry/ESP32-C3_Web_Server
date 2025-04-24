@@ -11,7 +11,6 @@
 #include <esp_event.h>
 #include <esp_wifi.h>
 #include <esp_http_server.h>
-#include "esp_websocket_client.h"
 #include <nvs_flash.h>
 #include "esp_partition.h"
 #include "esp_littlefs.h"
@@ -56,7 +55,7 @@
 #define MAX_HTTP_OUTPUT_BUFFER 512
 
 // Глобальная переменная WebSocket клиента
-websocket_client_t ws_client;
+ websocket_client_t ws_client;
 httpd_handle_t server_handle = NULL;
 
 static bool netif_initialized = false;
@@ -476,9 +475,9 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
                 ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
                 ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
                
-                if (!ws_client.is_connected) {
+          /*      if (!ws_client.is_connected) {
                     websocket_client_connect(&ws_client);
-                }
+                } */
                 
 
 
@@ -1448,146 +1447,18 @@ httpd_handle_t start_webserver(void) {
     return server;
 }
 
-
+/*
 void websocket_send_task(void *pvParameters) {
     while (1) {
         if (ws_client.is_connected) {
             char msg[128];
-            snprintf(msg, sizeof(msg), "{\"rssi\": %d}", rssi);
+            snprintf(msg, sizeof(msg), "{\"rssi\": %ld}", rssi);
             websocket_client_send(&ws_client, msg);
         }
         vTaskDelay(pdMS_TO_TICKS(5000));
     }
-}
-/*
-// Функция для получения и вывода заголовков
-void get_http_header_example(esp_http_client_handle_t client) {
-    // Переменная для хранения значения заголовка
-    char *header_value = NULL;
-
-    // Пример получения заголовка Content-Type
-    esp_err_t err = esp_http_client_get_header(client, "Content-Type", &header_value);
-
-        // Получение заголовков
-        const char *content_type = esp_http_client_get_header(client, "Content-Type", &header_value);
-        const char *content_length = esp_http_client_get_header(client, "Content-Type", &header_value);
-    
-    if (err == ESP_OK && header_value != NULL) {
-        ESP_LOGI(TAG, "Content-Type: %s", header_value);
-    } else {
-        ESP_LOGE(TAG, "Content-Type header not found or error occurred");
-    }
 }  */
 
-/*
-
-static void perform_http_request(void) {
-    esp_http_client_config_t config = {
-        .url = "http://195.8.40.51:8080/api/auth/login",  // Укажите URL
-        .method = HTTP_METHOD_POST,
-      
-        .timeout_ms = 5000,
-    };
-
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-
-    // Пример данных для отправки в запросе (например, логин и пароль)
-    const char *post_data = "username=chipizdry@gmail.com&password=12345678";
-    esp_http_client_set_header(client, "Content-Type", "application/x-www-form-urlencoded");
-    esp_http_client_set_header(client, "Accept", "application/json");
-    esp_http_client_set_post_field(client, post_data, strlen(post_data));
-
-    esp_err_t err = esp_http_client_perform(client);
-
-    if (err == ESP_OK) {
-        esp_http_client_fetch_headers(client);
-        int content_length = esp_http_client_get_content_length(client);
-        ESP_LOGI(TAG, "HTTP Status = %" PRId64 ", content_length = %" PRId64,
-                 (int64_t)esp_http_client_get_status_code(client),
-                 (int64_t)content_length);
-
-      char *content_type = NULL;
-    esp_err_t header_err = esp_http_client_get_header(client, "Content-Type", &content_type);
-
-    if (header_err == ESP_OK && content_type) {
-        ESP_LOGI(TAG, "Content-Type: %s", content_type);
-    } else {
-        ESP_LOGW(TAG, "Content-Type header not found");
-    }
-
-       
- 
-
-        // Чтение ответа с использованием esp_http_client_read
-        if (content_length > 0) {
-            char *response_buffer = malloc(content_length + 1);  // +1 для \0
-            if (response_buffer) {
-                int total_read_len = 0;
-                int remaining_len = content_length;
-                while (remaining_len > 0) {
-                    int read_len = esp_http_client_read(client, response_buffer + total_read_len, remaining_len);
-                    if (read_len <= 0) {
-                        ESP_LOGE(TAG, "Error reading response");
-                        break;
-                    }
-                    total_read_len += read_len;
-                    remaining_len -= read_len;
-                }
-                response_buffer[total_read_len] = '\0';  // Завершаем строку
-                ESP_LOGI(TAG, "Response: %s", response_buffer);
-
-                // Разбираем полученную строку как данные x-www-form-urlencoded
-                char *access_token = strstr(response_buffer, "access_token=");
-                if (access_token) {
-                    access_token += strlen("access_token=");  // Пропускаем часть ключа
-                    char *end_token = strchr(access_token, '&');
-                    if (end_token) {
-                        *end_token = '\0';  // Обрезаем строку на символе '&'
-                    }
-                    ESP_LOGI(TAG, "Access Token: %s", access_token);
-                }
-
-                free(response_buffer);
-            } else {
-                ESP_LOGE(TAG, "Failed to allocate memory for response buffer");
-            }
-        }
-    } else {
-        ESP_LOGE(TAG, "HTTP request failed: %s", esp_err_to_name(err));
-    }
-
-
-    esp_http_client_cleanup(client);
-}
- 
-
-static void perform_https_request(void) {
-    esp_http_client_config_t config = {
-        .url = "http://195.8.40.51:8080/api/auth/login", 
-        .method = HTTP_METHOD_POST,
-        .cert_pem = "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----", // Сертификат сервера для HTTPS
-    };
-
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-
-    // Пример данных для отправки в запросе (например, логин и пароль)
-    const char *post_data = "username=your_username&password=your_password";
-    esp_http_client_set_header(client, "Content-Type", "application/x-www-form-urlencoded");
-    esp_http_client_set_post_field(client, post_data, strlen(post_data));
-
-    esp_err_t err = esp_http_client_perform(client);
-
-       if (err == ESP_OK) {
-            ESP_LOGI(TAG, "HTTP Status = %" PRId64 ", content_length = %" PRId64,
-                    (int64_t)esp_http_client_get_status_code(client),
-                    (int64_t)esp_http_client_get_content_length(client));
-                        } else {
-                            ESP_LOGE(TAG, "HTTP request failed: %s", esp_err_to_name(err));
-                        }
-
-    esp_http_client_cleanup(client);
-}
-*/
 void app_main(void) {
 	 
      // Инициализация NVS
@@ -1597,6 +1468,7 @@ void app_main(void) {
     device_settings_t current_settings;
     load_settings_from_nvs(&current_settings);
      
+    esp_log_level_set("mbedtls", ESP_LOG_NONE);
     // Инициализация TCP/IP стека
     if (!netif_initialized) {
         ESP_ERROR_CHECK(esp_netif_init());
@@ -1626,8 +1498,8 @@ void app_main(void) {
     start_webserver();
     
 
-    websocket_client_init(&ws_client, "ws://your-websocket-server.com");
-    websocket_client_connect(&ws_client);
+   // websocket_client_init(&ws_client, "ws://your-websocket-server.com");
+   // websocket_client_connect(&ws_client);
     // Инициализация мьютекса
     uart_mutex = xSemaphoreCreateMutex();
     if (uart_mutex == NULL) {
@@ -1637,8 +1509,15 @@ void app_main(void) {
    uart_command_queue = xQueueCreate(10, sizeof(uart_command_t));
    init_uart();
    
+   websocket_client_init(&ws_client, "wss://dev-corid.cor-medical.ua/api/device_ws/connect", "device_id");
+
+// Запуск задачи WebSocket клиента
+
+    xTaskCreate(websocket_client_task, "ws_client_task",16384, &ws_client, 5, NULL);
+    UBaseType_t watermark = uxTaskGetStackHighWaterMark(NULL);
+    ESP_LOGI("STACK", "Remaining stack: %d bytes", watermark);
+   
 	 // Создание очередей
-    //uart_command_queue = xQueueCreate(10, sizeof(uart_command_t));
 		// Создаём задачу для обработки UART событий
     xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 12, NULL);
 

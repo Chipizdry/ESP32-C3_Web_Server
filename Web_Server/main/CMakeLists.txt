@@ -3,6 +3,7 @@
 idf_component_register(
     SRCS "websocket_client.c" "main.c" "uart.c" 
     INCLUDE_DIRS "."
+    EMBED_TXTFILES "cacert.pem"
     REQUIRES esp_wifi 
     esp_netif
     esp_http_server

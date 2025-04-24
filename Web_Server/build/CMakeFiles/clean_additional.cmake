@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.16)
 if("${CONFIG}" STREQUAL "" OR "${CONFIG}" STREQUAL "")
   file(REMOVE_RECURSE
   "Web_Server.map"
+  "cacert.pem.S"
   "esp-idf\\esptool_py\\flasher_args.json.in"
   "esp-idf\\mbedtls\\x509_crt_bundle"
   "flash_app_args"

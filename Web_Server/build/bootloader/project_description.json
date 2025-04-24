@@ -19,7 +19,7 @@
     "phy_data_partition": "",
     "monitor_baud" :      "115200",
     "monitor_toolprefix": "riscv32-esp-elf-",
-    "c_compiler":         "C:/Users/chipi/.espressif/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/bin/riscv32-esp-elf-gcc.exe",
+    "c_compiler":         "D:/Espressif/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/bin/riscv32-esp-elf-gcc.exe",
     "config_environment" : {
         "COMPONENT_KCONFIGS" : "D:/Espressif/frameworks/esp-idf-v5.3.1/components/efuse/Kconfig;D:/Espressif/frameworks/esp-idf-v5.3.1/components/esp_common/Kconfig;D:/Espressif/frameworks/esp-idf-v5.3.1/components/esp_hw_support/Kconfig;D:/Espressif/frameworks/esp-idf-v5.3.1/components/esp_system/Kconfig;D:/Espressif/frameworks/esp-idf-v5.3.1/components/freertos/Kconfig;D:/Espressif/frameworks/esp-idf-v5.3.1/components/hal/Kconfig;D:/Espressif/frameworks/esp-idf-v5.3.1/components/log/Kconfig;D:/Espressif/frameworks/esp-idf-v5.3.1/components/newlib/Kconfig;D:/Espressif/frameworks/esp-idf-v5.3.1/components/soc/Kconfig;D:/Espressif/frameworks/esp-idf-v5.3.1/components/spi_flash/Kconfig",
         "COMPONENT_KCONFIGS_PROJBUILD" : "D:/Espressif/frameworks/esp-idf-v5.3.1/components/bootloader/Kconfig.projbuild;D:/Espressif/frameworks/esp-idf-v5.3.1/components/esp_app_format/Kconfig.projbuild;D:/Espressif/frameworks/esp-idf-v5.3.1/components/esp_rom/Kconfig.projbuild;D:/Espressif/frameworks/esp-idf-v5.3.1/components/esptool_py/Kconfig.projbuild;D:/Espressif/frameworks/esp-idf-v5.3.1/components/partition_table/Kconfig.projbuild"
