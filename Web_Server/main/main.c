@@ -1496,10 +1496,6 @@ void app_main(void) {
     list_files("/littlefs");
  
     start_webserver();
-    
-
-   // websocket_client_init(&ws_client, "ws://your-websocket-server.com");
-   // websocket_client_connect(&ws_client);
     // Инициализация мьютекса
     uart_mutex = xSemaphoreCreateMutex();
     if (uart_mutex == NULL) {
@@ -1520,12 +1516,9 @@ void app_main(void) {
 	 // Создание очередей
 		// Создаём задачу для обработки UART событий
     xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 12, NULL);
-
-    // Создание задач
     xTaskCreate(wifi_signal_strength_task, "wifi_signal_strength_task", 2048, NULL, 5, NULL);
     xTaskCreate(uart_command_task, "uart_command_task", 2048, NULL, 5, NULL);
     xTaskCreate(periodic_request_task, "periodic_request_task", 2048, NULL, 5, NULL);
-      // Запуск задачи для отслеживания состояния пина заводских настроек
     xTaskCreate(reset_task, "reset_task",2048, NULL,2, NULL);
     
 }

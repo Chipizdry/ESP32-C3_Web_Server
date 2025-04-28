@@ -37,16 +37,20 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base,
             ws_client->is_connected = false;
             break;
             
-        case WEBSOCKET_EVENT_DATA:
+            case WEBSOCKET_EVENT_DATA:
             if (data->data_len > 0 && data->data_ptr != NULL) {
+                if (data->op_code != 0x1) {  // Только текст
+                    ESP_LOGD(TAG, "Ignoring non-text WebSocket frame (opcode=%d)", data->op_code);
+                    break;
+                }
+        
                 ESP_LOGI(TAG, "Received data: %.*s", data->data_len, (char *)data->data_ptr);
-                
-                // Помещаем команду в очередь для обработки
+        
                 ws_message_t msg;
                 size_t len = data->data_len < sizeof(msg.data) - 1 ? data->data_len : sizeof(msg.data) - 1;
                 memcpy(msg.data, data->data_ptr, len);
                 msg.data[len] = '\0';
-                
+        
                 if (xQueueSend(ws_client->in_queue, &msg, 0) != pdTRUE) {
                     ESP_LOGW(TAG, "Incoming command queue full");
                 }
@@ -69,7 +73,7 @@ void websocket_client_init(websocket_client_t *ws_client, const char *uri, const
     
     // Создаем очереди
     ws_client->out_queue = xQueueCreate(10, sizeof(ws_message_t));
-    ws_client->in_queue = xQueueCreate(10, sizeof(ws_message_t));
+    ws_client->in_queue = xQueueCreate(20, sizeof(ws_message_t));
     
     if (ws_client->out_queue == NULL || ws_client->in_queue == NULL) {
         ESP_LOGE(TAG, "Failed to create queues");
@@ -144,20 +148,30 @@ void websocket_client_task(void *pvParameters) {
     websocket_client_t *ws_client = (websocket_client_t *)pvParameters;
     
     while (1) {
-        // Обработка исходящих сообщений
+        ESP_LOGD(TAG, "WebSocket task running. Connected: %d", ws_client->is_connected);
+        
         if (ws_client->is_connected && ws_client->out_queue != NULL) {
             ws_message_t msg;
             if (xQueueReceive(ws_client->out_queue, &msg, pdMS_TO_TICKS(100)) == pdTRUE) {
+                ESP_LOGI(TAG, "Sending message: %s", msg.data);
                 int ret = esp_websocket_client_send_text(ws_client->client, msg.data, strlen(msg.data), portMAX_DELAY);
                 if (ret < 0) {
                     ESP_LOGE(TAG, "Failed to send WebSocket data");
                 }
             }
         }
+
+        /*
+        if (!ws_client->is_connected) {
+            ESP_LOGW(TAG, "WebSocket not connected. Trying to reconnect...");
+            vTaskDelay(pdMS_TO_TICKS(10000));
+            websocket_client_start_task(ws_client);
+        }  */
         
-        // Переподключение при необходимости
         if (!ws_client->is_connected) {
             vTaskDelay(pdMS_TO_TICKS(10000));
+            esp_websocket_client_stop(ws_client->client);
+            esp_websocket_client_destroy(ws_client->client);
             websocket_client_start_task(ws_client);
         }
         
