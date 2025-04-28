@@ -37,23 +37,36 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base,
             ws_client->is_connected = false;
             break;
             
-            case WEBSOCKET_EVENT_DATA:
-            if (data->data_len > 0 && data->data_ptr != NULL) {
-                if (data->op_code != 0x1) {  // Только текст
-                    ESP_LOGD(TAG, "Ignoring non-text WebSocket frame (opcode=%d)", data->op_code);
-                    break;
+            case WEBSOCKET_EVENT_DATA: {
+                if (data->data_len > 0 && data->data_ptr != NULL) {
+                    // Логируем тип фрейма
+                    ESP_LOGI(TAG, "WebSocket Frame received: opcode=%d, payload_len=%d, payload (first 20 bytes)='%.*s'",
+                             data->op_code, data->data_len,
+                             data->data_len > 20 ? 20 : data->data_len, (char *)data->data_ptr);
+            
+                    switch (data->op_code) {
+                        case 0x1: // Текстовое сообщение
+                            ESP_LOGI(TAG, "Text frame: %.*s", data->data_len, (char *)data->data_ptr);
+                            break;
+                        case 0x2: // Бинарное сообщение
+                            ESP_LOGI(TAG, "Binary frame (first 20 bytes): %.*s", 
+                                     data->data_len > 20 ? 20 : data->data_len, (char *)data->data_ptr);
+                            break;
+                        case 0x9: // Ping
+                            ESP_LOGI(TAG, "Ping frame received");
+                            break;
+                        case 0xA: // Pong
+                            ESP_LOGI(TAG, "Pong frame received");
+                            break;
+                        case 0x8: // Close
+                            ESP_LOGI(TAG, "Close frame received");
+                            break;
+                        default:
+                            ESP_LOGW(TAG, "Unknown frame opcode: %d", data->op_code);
+                            break;
+                    }
                 }
-        
-                ESP_LOGI(TAG, "Received data: %.*s", data->data_len, (char *)data->data_ptr);
-        
-                ws_message_t msg;
-                size_t len = data->data_len < sizeof(msg.data) - 1 ? data->data_len : sizeof(msg.data) - 1;
-                memcpy(msg.data, data->data_ptr, len);
-                msg.data[len] = '\0';
-        
-                if (xQueueSend(ws_client->in_queue, &msg, 0) != pdTRUE) {
-                    ESP_LOGW(TAG, "Incoming command queue full");
-                }
+                break;
             }
             break;
             
@@ -72,7 +85,7 @@ void websocket_client_init(websocket_client_t *ws_client, const char *uri, const
     strncpy(ws_client->device_id, device_id, sizeof(ws_client->device_id) - 1);
     
     // Создаем очереди
-    ws_client->out_queue = xQueueCreate(10, sizeof(ws_message_t));
+    ws_client->out_queue = xQueueCreate(20, sizeof(ws_message_t));
     ws_client->in_queue = xQueueCreate(20, sizeof(ws_message_t));
     
     if (ws_client->out_queue == NULL || ws_client->in_queue == NULL) {
@@ -102,7 +115,6 @@ void websocket_client_start_task(websocket_client_t *ws_client) {
         ESP_LOGE(TAG, "Failed to initialize WebSocket client");
         return;
     }
-    
     // Регистрация обработчика событий
     esp_websocket_register_events(ws_client->client, WEBSOCKET_EVENT_ANY, 
                                 websocket_event_handler, ws_client);
@@ -150,31 +162,63 @@ void websocket_client_task(void *pvParameters) {
     while (1) {
         ESP_LOGD(TAG, "WebSocket task running. Connected: %d", ws_client->is_connected);
         
-        if (ws_client->is_connected && ws_client->out_queue != NULL) {
-            ws_message_t msg;
-            if (xQueueReceive(ws_client->out_queue, &msg, pdMS_TO_TICKS(100)) == pdTRUE) {
-                ESP_LOGI(TAG, "Sending message: %s", msg.data);
-                int ret = esp_websocket_client_send_text(ws_client->client, msg.data, strlen(msg.data), portMAX_DELAY);
-                if (ret < 0) {
-                    ESP_LOGE(TAG, "Failed to send WebSocket data");
+        if (ws_client->is_connected) {
+            // Периодическая отправка данных
+            send_periodic_data(ws_client);
+
+           // Проверка и отправка сообщений из очереди
+            ws_message_t outgoing_msg;
+            while (xQueueReceive(ws_client->out_queue, &outgoing_msg, 0) == pdTRUE) {
+                esp_websocket_client_send_text(ws_client->client, outgoing_msg.data, strlen(outgoing_msg.data), portMAX_DELAY);
+                ESP_LOGI(TAG, "Sent message from out_queue: %s", outgoing_msg.data);
+            }
+
+
+            // Проверка входящих сообщений
+            char command[512];
+            if (websocket_client_get_command(ws_client, command, sizeof(command))) {
+                ESP_LOGI(TAG, "Received command: %s", command);
+                
+                // Обработка команды
+                // Например, парсинг JSON и выполнение действий
+                cJSON *root = cJSON_Parse(command);
+                if (root != NULL) {
+                    const cJSON *command_type = cJSON_GetObjectItem(root, "command");
+                    if (command_type != NULL && cJSON_IsString(command_type)) {
+                        if (strcmp(command_type->valuestring, "reset") == 0) {
+                            ESP_LOGI(TAG, "Reset command received.");
+                            // Выполнить команду сброса устройства
+                        }
+                    }
+                    cJSON_Delete(root);
                 }
             }
         }
 
-        /*
         if (!ws_client->is_connected) {
-            ESP_LOGW(TAG, "WebSocket not connected. Trying to reconnect...");
-            vTaskDelay(pdMS_TO_TICKS(10000));
-            websocket_client_start_task(ws_client);
-        }  */
-        
-        if (!ws_client->is_connected) {
+            ESP_LOGI(TAG, "Reconnecting WebSocket...");
             vTaskDelay(pdMS_TO_TICKS(10000));
             esp_websocket_client_stop(ws_client->client);
             esp_websocket_client_destroy(ws_client->client);
             websocket_client_start_task(ws_client);
         }
-        
-        vTaskDelay(pdMS_TO_TICKS(100));
+
+        vTaskDelay(pdMS_TO_TICKS(5000));  // Пауза перед следующей отправкой
     }
+}
+
+
+void send_periodic_data(websocket_client_t *ws_client) {
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "device_id", ws_client->device_id);
+    cJSON_AddStringToObject(root, "type", "status");
+    cJSON_AddNumberToObject(root, "temperature", 25.5);  // Пример данных
+    cJSON_AddNumberToObject(root, "humidity", 60);       // Пример данных 
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    websocket_client_send(ws_client, json_str);
+    ESP_LOGI(TAG, "Sent periodic data: %s", json_str);
+
+    cJSON_Delete(root);
+    free(json_str);
 }

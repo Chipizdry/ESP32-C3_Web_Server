@@ -30,5 +30,6 @@ void websocket_client_send(websocket_client_t *ws_client, const char *data);
 bool websocket_client_get_command(websocket_client_t *ws_client, char *buffer, size_t buffer_size);
 
 void websocket_client_task(void *pvParameters);
+void send_periodic_data(websocket_client_t *ws_client);
 
 #endif // WEBSOCKET_CLIENT_H

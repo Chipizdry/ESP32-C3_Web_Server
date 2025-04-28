@@ -1447,17 +1447,7 @@ httpd_handle_t start_webserver(void) {
     return server;
 }
 
-/*
-void websocket_send_task(void *pvParameters) {
-    while (1) {
-        if (ws_client.is_connected) {
-            char msg[128];
-            snprintf(msg, sizeof(msg), "{\"rssi\": %ld}", rssi);
-            websocket_client_send(&ws_client, msg);
-        }
-        vTaskDelay(pdMS_TO_TICKS(5000));
-    }
-}  */
+
 
 void app_main(void) {
 	 
@@ -1505,16 +1495,12 @@ void app_main(void) {
    uart_command_queue = xQueueCreate(10, sizeof(uart_command_t));
    init_uart();
    
-   websocket_client_init(&ws_client, "wss://dev-corid.cor-medical.ua/api/device_ws/connect", "device_id");
-
-// Запуск задачи WebSocket клиента
-
+    websocket_client_init(&ws_client, "wss://dev-corid.cor-medical.ua/api/device_ws/connect", "device_id");
     xTaskCreate(websocket_client_task, "ws_client_task",16384, &ws_client, 5, NULL);
     UBaseType_t watermark = uxTaskGetStackHighWaterMark(NULL);
     ESP_LOGI("STACK", "Remaining stack: %d bytes", watermark);
    
 	 // Создание очередей
-		// Создаём задачу для обработки UART событий
     xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 12, NULL);
     xTaskCreate(wifi_signal_strength_task, "wifi_signal_strength_task", 2048, NULL, 5, NULL);
     xTaskCreate(uart_command_task, "uart_command_task", 2048, NULL, 5, NULL);
