@@ -1495,7 +1495,7 @@ void app_main(void) {
    uart_command_queue = xQueueCreate(10, sizeof(uart_command_t));
    init_uart();
    
-    websocket_client_init(&ws_client, "wss://dev-corid.cor-medical.ua/api/device_ws/connect", "device_id");
+    websocket_client_init(&ws_client, "wss://dev-corid.cor-medical.ua/api/device_ws/activate", "eb369349-ef22-480e-9da1-d1a7e3de510c4ad97623-79bb-48d0-a4c6-bba8f8be047c");
     xTaskCreate(websocket_client_task, "ws_client_task",16384, &ws_client, 5, NULL);
     UBaseType_t watermark = uxTaskGetStackHighWaterMark(NULL);
     ESP_LOGI("STACK", "Remaining stack: %d bytes", watermark);

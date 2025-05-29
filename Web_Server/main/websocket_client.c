@@ -85,7 +85,7 @@ void websocket_client_init(websocket_client_t *ws_client, const char *uri, const
     strncpy(ws_client->device_id, device_id, sizeof(ws_client->device_id) - 1);
     
     // Создаем очереди
-    ws_client->out_queue = xQueueCreate(20, sizeof(ws_message_t));
+    ws_client->out_queue = xQueueCreate(50, sizeof(ws_message_t));
     ws_client->in_queue = xQueueCreate(20, sizeof(ws_message_t));
     
     if (ws_client->out_queue == NULL || ws_client->in_queue == NULL) {
